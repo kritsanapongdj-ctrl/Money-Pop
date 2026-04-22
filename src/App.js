@@ -35,7 +35,7 @@ const theme = {
   button: "bg-blue-800 hover:bg-blue-900 text-white shadow-md rounded-xl font-bold transition-all active:scale-95",
   buttonOutline: "border border-blue-200 text-blue-800 hover:bg-blue-50 rounded-xl font-bold transition-all",
   input: "bg-slate-50 border border-slate-200 text-slate-800 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 rounded-xl p-3 w-full transition-all text-sm sm:text-base outline-none",
-  chartColors: ['#1e40af', '#3b82f6', '#f59e0b', '#ec4899', '#10b981'] // Navy, Blue, Amber, Pink, Emerald
+  chartColors: ['#1e40af', '#3b82f6', '#f59e0b', '#ec4899', '#10b981'] 
 };
 
 // --- Helper Functions ---
@@ -43,7 +43,7 @@ const formatCurrency = (amount) => {
   return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(amount);
 };
 
-// Map keywords to specific icons or brands
+// Map keywords to specific icons
 const getIconForCategory = (name) => {
   const n = name.toLowerCase();
   if (n.includes('shopee') || n.includes('lazada') || n.includes('ช้อป')) return <ShoppingBag className="text-orange-500" />;
@@ -61,7 +61,7 @@ const getIconForCategory = (name) => {
   if (n.includes('ของขวัญ') || n.includes('บริจาค') || n.includes('ทำบุญ')) return <Gift className="text-pink-500" />;
   if (n.includes('ทำงาน') || n.includes('ออฟฟิศ') || n.includes('อุปกรณ์')) return <Briefcase className="text-amber-700" />;
   
-  return <ImageIcon className="text-slate-400" />; // Default
+  return <ImageIcon className="text-slate-400" />;
 };
 
 const ListManager = ({ title, data, collectionName, db, appId }) => {
@@ -202,7 +202,6 @@ const ExpenseFormModal = ({ editingExpense, categories, sources, members, saving
         transactions: [newTransaction, ...savings.transactions].slice(0, 50)
       });
     }
-    // --- สิ้นสุดส่วนหัก/คืน เงินกองกลาง ---
 
     setIsModalOpen(false);
   };
@@ -334,37 +333,31 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   
-  // Data States
   const [expenses, setExpenses] = useState([]);
   const [members, setMembers] = useState([]);
   const [categories, setCategories] = useState([]);
   const [sources, setSources] = useState([]);
   const [savings, setSavings] = useState({ currentAmount: 0, transactions: [] });
 
-  // Filter States
   const [filters, setFilters] = useState({
-    month: new Date().toISOString().slice(0, 7), // YYYY-MM
+    month: new Date().toISOString().slice(0, 7),
     payer: '',
     category: '',
     source: '',
     paymentType: ''
   });
 
-  // UI States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
   
-  // Bulk Pay States
-  const [selectedForPay, setSelectedForPay] = useState({}); // { expId: amountToPay }
+  const [selectedForPay, setSelectedForPay] = useState({});
   const [splitSelectModal, setSplitSelectModal] = useState({ isOpen: false, expId: null, members: [] });
 
-  // Savings Form States
   const [savingsAmount, setSavingsAmount] = useState('');
   const [savingsSource, setSavingsSource] = useState('');
   const [savingsType, setSavingsType] = useState('add');
 
-  // --- Authentication ---
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -382,11 +375,9 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // --- Real-time Data Fetching ---
   useEffect(() => {
     if (!user) return;
 
-    // Use Public Data path for Family Sharing context
     const getPath = (colName) => collection(db, 'artifacts', appId, 'public', 'data', colName);
 
     const unsubMembers = onSnapshot(query(getPath('members')), (snap) => {
@@ -420,9 +411,7 @@ export default function App() {
     };
   }, [user]);
 
-  // --- Real LINE Messaging API via Google Apps Script ---
   const sendLineMessage = async (message) => {
-    // นำ Web App URL ของ GAS มาใส่ที่นี่
     const gasUrl = "ใส่_WEB_APP_URL_จาก_GOOGLE_APPS_SCRIPT_ที่นี่"; 
     
     if (gasUrl === "ใส่_WEB_APP_URL_จาก_GOOGLE_APPS_SCRIPT_ที่นี่" || !gasUrl) {
@@ -446,7 +435,6 @@ export default function App() {
     setTimeout(() => setToastMessage(''), 3000);
   };
 
-  // --- Derived Data & Filtering ---
   const filteredExpenses = useMemo(() => {
     return expenses.filter(exp => {
       if (filters.month && exp.month !== filters.month) return false;
@@ -462,7 +450,6 @@ export default function App() {
     });
   }, [expenses, filters]);
 
-  // --- Handlers ---
   const handleCheckExpense = (expense) => {
     if (selectedForPay[expense.id]) {
       const newSelected = { ...selectedForPay };
@@ -544,7 +531,6 @@ export default function App() {
       const exp = expenses.find(e => e.id === id);
       await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'expenses', id));
       
-      // คืนเงินเข้ากองกลางอัตโนมัติ หากบิลนี้ถูกระบุว่าจ่ายจากกองกลาง
       if (exp) {
         const sourceObj = sources.find(s => s.id === exp.sourceId);
         if (sourceObj && sourceObj.name.includes('กองกลาง')) {
@@ -569,8 +555,6 @@ export default function App() {
 
   const selectedTotalAmount = Object.values(selectedForPay).reduce((sum, item) => sum + item.amount, 0);
 
-  // --- Render Functions ---
-  
   const renderNavigation = () => (
     <nav className="bg-white border-t border-slate-200 pb-safe pt-2 px-4 sticky bottom-0 z-40 sm:top-0 sm:bottom-auto sm:border-b sm:border-t-0 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
       <div className="flex space-x-2 w-full justify-around max-w-lg mx-auto sm:max-w-none sm:justify-start">
@@ -694,8 +678,8 @@ export default function App() {
     });
 
     const pieData = [
-      { name: 'ชำระแล้ว', value: totalPaid, color: '#3b82f6' }, // Blue
-      { name: 'รอชำระ', value: totalPending, color: '#f43f5e' } // Rose
+      { name: 'ชำระแล้ว', value: totalPaid, color: '#3b82f6' }, 
+      { name: 'รอชำระ', value: totalPending, color: '#f43f5e' } 
     ];
 
     const catData = Object.keys(categoryDataMap).map(k => ({ name: k, value: categoryDataMap[k] }));
@@ -707,10 +691,8 @@ export default function App() {
         {renderFilters()}
 
         <div className="px-4 sm:px-0 flex flex-col gap-4 sm:gap-5">
-          {/* Main Summary Card - Responsive Layout */}
           <div className={`${theme.card} p-5 sm:p-6 bg-gradient-to-br from-blue-900 to-blue-800 text-white shadow-xl flex flex-col md:flex-row gap-5 sm:gap-6`}>
             
-            {/* Left Side: Text & Totals */}
             <div className="w-full md:w-5/12 lg:w-1/2 flex flex-col justify-between">
               <div className="mb-4 md:mb-0">
                 <p className="text-blue-200 text-sm font-medium mb-1">ยอดรวมทั้งหมดเดือนนี้</p>
@@ -729,7 +711,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Right Side: Pie Chart */}
             <div className="w-full md:w-7/12 lg:w-1/2 bg-white/10 rounded-2xl p-4 backdrop-blur-md border border-white/10 flex items-center justify-center min-h-[180px] sm:min-h-[220px]">
               <ResponsiveContainer width="100%" height="100%" minHeight={180}>
                 <PieChart>
@@ -755,10 +736,8 @@ export default function App() {
             </div>
           </div>
 
-          {/* Small Charts Grid */}
           <div className={`grid grid-cols-1 ${!filters.payer ? 'md:grid-cols-2' : ''} gap-4 sm:gap-5`}>
             
-            {/* Category Bar Chart */}
             <div className={`${theme.card} p-4 sm:p-5 flex flex-col min-h-[260px] sm:min-h-[280px]`}>
               <h3 className={`text-sm font-bold ${theme.primary} mb-4 flex items-center shrink-0`}><ShoppingBag size={16} className="mr-2"/> แยกตามหมวดหมู่</h3>
               <div className="flex-1 min-h-[200px]">
@@ -781,7 +760,6 @@ export default function App() {
               </div>
             </div>
             
-            {/* Members Pie Chart */}
             {!filters.payer && (
               <div className={`${theme.card} p-4 sm:p-5 flex flex-col min-h-[260px] sm:min-h-[280px]`}>
                 <h3 className={`text-sm font-bold ${theme.primary} mb-2 flex items-center shrink-0`}><Users size={16} className="mr-2"/> แยกตามบุคคล</h3>
@@ -827,7 +805,6 @@ export default function App() {
 
         {renderFilters()}
 
-        {/* Bulk Actions Sticky Header */}
         {Object.keys(selectedForPay).length > 0 && (
           <div className="sticky top-2 z-40 mx-4 sm:mx-0 bg-white p-4 rounded-2xl border border-blue-200 shadow-[0_10px_25px_rgba(37,99,235,0.15)] flex justify-between items-center mb-4 animate-slideUp">
             <div>
@@ -993,8 +970,6 @@ export default function App() {
 
     return (
       <div className="space-y-4 sm:space-y-6 animate-fadeIn pb-6 px-4 sm:px-0">
-        
-        {/* Hero Card */}
         <div className={`${theme.card} p-8 text-center bg-gradient-to-br from-indigo-500 to-blue-600 text-white relative overflow-hidden shadow-lg`}>
            <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white via-transparent to-transparent"></div>
            <div className="bg-white/20 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-md shadow-inner">
@@ -1004,7 +979,6 @@ export default function App() {
            <p className="text-4xl sm:text-5xl font-black drop-shadow-md">{formatCurrency(savings.currentAmount)}</p>
         </div>
 
-        {/* Action Form */}
         <div className={`${theme.card} p-6`}>
           <h3 className={`font-bold ${theme.primary} mb-4 flex items-center`}><Edit size={18} className="mr-2"/> บันทึกรายการ</h3>
           <form onSubmit={handleSaveFund} className="flex flex-col gap-4">
@@ -1026,7 +1000,6 @@ export default function App() {
           </form>
         </div>
 
-        {/* History */}
         <div className={`${theme.card} p-6`}>
           <h3 className={`font-bold ${theme.primary} mb-4`}>ประวัติการทำรายการล่าสุด</h3>
           <div className="space-y-3">
@@ -1057,32 +1030,26 @@ export default function App() {
   };
 
   const renderSettings = () => {
-    // --- Storage Calculation ---
     const getStorageUsage = () => {
-      // จำลองการรวมข้อมูลเพื่อคำนวณขนาด Byte โดยประมาณ
       const dataStr = JSON.stringify({ expenses, members, categories, sources, savings });
       const bytes = new Blob([dataStr]).size; 
       return bytes;
     };
     
-    // กำหนดพื้นที่สูงสุดจำลองที่ 5 MB (เพื่อการแสดงผล UI)
     const maxStorage = 5 * 1024 * 1024; 
     const storageBytes = getStorageUsage();
     const storageKB = (storageBytes / 1024).toFixed(2);
     const storageMB = (storageBytes / (1024 * 1024)).toFixed(2);
     const displayStorage = storageBytes > 1024 * 1024 ? `${storageMB} MB` : `${storageKB} KB`;
     
-    // คำนวณเปอร์เซ็นต์ (แสดงขั้นต่ำที่ 0.5% เพื่อให้เห็นแถบบ้าง)
     const storagePercent = Math.max(0.5, Math.min((storageBytes / maxStorage) * 100, 100)); 
 
     const handleClearData = async () => {
       if (confirm("⚠️ คำเตือน: คุณแน่ใจหรือไม่ที่จะล้างข้อมูล 'รายการบิล' และ 'ประวัติกองกลาง' ทั้งหมด?\n\n(การกระทำนี้ไม่สามารถกู้คืนได้ แต่รายชื่อ, หมวดหมู่ และบัญชี จะยังคงอยู่)")) {
         try {
-          // ลบรายการบิลทั้งหมด
           const expensePromises = expenses.map(exp => deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'expenses', exp.id)));
           await Promise.all(expensePromises);
 
-          // รีเซ็ตประวัติกองกลาง และยอดเงินให้กลับเป็น 0
           await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'funds', 'savings'), {
             currentAmount: 0,
             transactions: []
@@ -1105,7 +1072,6 @@ export default function App() {
           <ListManager title="หมวดหมู่ค่าใช้จ่าย" data={categories} collectionName="categories" db={db} appId={appId} />
           <ListManager title="แหล่งที่มา/บัญชีการเงิน" data={sources} collectionName="sources" db={db} appId={appId} />
           
-          {/* Storage Manager */}
           <div className={`${theme.card} p-5 md:col-span-2 lg:col-span-3`}>
             <h3 className={`font-bold ${theme.primary} mb-4 flex items-center`}><Database size={18} className="mr-2"/> พื้นที่จัดเก็บข้อมูล (Storage)</h3>
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
@@ -1205,7 +1171,6 @@ export default function App() {
     <div className={`min-h-screen ${theme.bg} font-sans selection:bg-blue-200`}>
       <div className="max-w-md sm:max-w-3xl lg:max-w-5xl mx-auto flex flex-col h-screen overflow-hidden bg-slate-50/50 sm:border-x border-slate-200 shadow-sm">
         
-        {/* App Bar (Mobile & Desktop) */}
         <header className="bg-white px-4 sm:px-6 py-4 flex justify-between items-center border-b border-slate-200 shadow-[0_2px_10px_rgba(0,0,0,0.02)] z-30">
           <div className="flex items-center gap-2">
             <div className="bg-blue-800 text-white p-1.5 rounded-lg shadow-sm">
@@ -1223,7 +1188,6 @@ export default function App() {
           </div>
         </header>
 
-        {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto sm:p-6 custom-scrollbar relative">
           {activeTab === 'dashboard' && renderDashboard()}
           {activeTab === 'expenses' && renderExpensesList()}
@@ -1231,11 +1195,9 @@ export default function App() {
           {activeTab === 'settings' && renderSettings()}
         </main>
 
-        {/* Navigation */}
         {renderNavigation()}
       </div>
 
-      {/* Modals & Toasts */}
       {isModalOpen && (
         <ExpenseFormModal 
           editingExpense={editingExpense}
@@ -1278,3 +1240,4 @@ export default function App() {
       `}} />
     </div>
   );
+}
