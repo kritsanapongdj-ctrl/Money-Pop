@@ -12,7 +12,7 @@ import {
 import { 
   Home, CreditCard, PiggyBank, Settings, Plus, Check, Trash2, Edit, 
   Filter, X, ShoppingBag, Coffee, Car, Home as HomeIcon, Smartphone,
-  Zap, Bell, Image as ImageIcon, MessageCircle, ArrowUpRight, ArrowDownRight, Users, Database,
+  Zap, Image as ImageIcon, MessageCircle, ArrowUpRight, ArrowDownRight, Users, Database,
   BookOpen, HeartPulse, ShoppingCart, TrendingUp, Gift, Briefcase
 } from 'lucide-react';
 
