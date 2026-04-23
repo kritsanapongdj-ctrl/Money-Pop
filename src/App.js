@@ -18,11 +18,27 @@ import {
 } from 'lucide-react';
 
 // --- Firebase Initialization ---
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyBzheFmJxRaXAS-x_NxATO-C0b4mEof3QU",
+  authDomain: "money-pop-family.firebaseapp.com",
+  projectId: "money-pop-family",
+  storageBucket: "money-pop-family.firebasestorage.app",
+  messagingSenderId: "1009318556682",
+  appId: "1:1009318556682:web:84d4d7078e1e00d16d9bf3",
+  measurementId: "G-SWTHYSHP1L"
+};
+
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'money-pop-app';
+const analytics = getAnalytics(app);
 
 // --- Modern Banking Theme Colors (Light Theme) ---
 const theme = {
