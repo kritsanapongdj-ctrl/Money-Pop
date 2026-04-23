@@ -309,9 +309,14 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
                 </div>
                 {formData.totalAmount && Object.values(splitSelection).filter(Boolean).length > 0 && (
                   <div className="mt-4 p-4 bg-white border border-blue-100 rounded-xl text-center shadow-sm">
-                    <p className={`text-xs font-semibold ${theme.textMuted} uppercase tracking-wide`}>ยอดแชร์ต่อคน</p>
+                    <p className={`text-xs font-semibold ${theme.textMuted} uppercase tracking-wide`}>
+                      ยอดแชร์ต่อคน {formData.paymentType === 'installment' ? '(ต่อเดือน)' : ''}
+                    </p>
                     <p className="text-2xl font-bold text-blue-800 mt-1">
-                      {formatCurrency(formData.totalAmount / Object.values(splitSelection).filter(Boolean).length)}
+                      {formatCurrency(
+                        (formData.totalAmount / (formData.paymentType === 'installment' && formData.installmentMonths ? parseInt(formData.installmentMonths) || 1 : 1)) / 
+                        Object.values(splitSelection).filter(Boolean).length
+                      )}
                     </p>
                   </div>
                 )}
@@ -453,8 +458,10 @@ export default function App() {
       delete newSelected[expense.id];
       setSelectedForPay(newSelected);
     } else {
+      const monthlyDivisor = (expense.paymentType === 'installment' && expense.installmentMonths) ? expense.installmentMonths : 1;
+      
       if (expense.payerType === 'single') {
-        setSelectedForPay({ ...selectedForPay, [expense.id]: { amount: expense.totalAmount, type: 'single' } });
+        setSelectedForPay({ ...selectedForPay, [expense.id]: { amount: expense.totalAmount / monthlyDivisor, type: 'single' } });
       } else {
         const unpaidMembers = Object.keys(expense.splitDetails).filter(mId => !expense.splitDetails[mId].paid);
         if (unpaidMembers.length === 0) return; 
@@ -478,8 +485,10 @@ export default function App() {
     }
 
     let amountToPay = 0;
+    const monthlyDivisor = (expenseData.paymentType === 'installment' && expenseData.installmentMonths) ? expenseData.installmentMonths : 1;
+
     selectedMembers.forEach(mId => {
-      amountToPay += expenseData.splitDetails[mId].amount;
+      amountToPay += (expenseData.splitDetails[mId].amount / monthlyDivisor);
     });
 
     setSelectedForPay({
@@ -497,15 +506,16 @@ export default function App() {
 
       const payData = selectedForPay[expense.id];
       const newExpense = { ...expense };
+      const monthlyDivisor = (newExpense.paymentType === 'installment' && newExpense.installmentMonths) ? newExpense.installmentMonths : 1;
 
       if (payData.type === 'single') {
         newExpense.status = 'paid';
-        totalPaid += newExpense.totalAmount;
+        totalPaid += (newExpense.totalAmount / monthlyDivisor);
       } else if (payData.type === 'split') {
         const newSplitDetails = { ...newExpense.splitDetails };
         payData.memberIds.forEach(mId => {
           newSplitDetails[mId].paid = true;
-          totalPaid += newSplitDetails[mId].amount;
+          totalPaid += (newSplitDetails[mId].amount / monthlyDivisor);
         });
         
         const allPaid = Object.values(newSplitDetails).every(v => v.paid);
@@ -823,13 +833,14 @@ export default function App() {
             const cat = categories.find(c => c.id === exp.categoryId);
             const source = sources.find(s => s.id === exp.sourceId);
             
-            let displayAmount = exp.totalAmount;
+            const monthlyDivisor = (exp.paymentType === 'installment' && exp.installmentMonths) ? exp.installmentMonths : 1;
+            let displayAmount = exp.totalAmount / monthlyDivisor;
             let displayStatus = exp.status;
             let isPartiallyPaid = false;
 
             if (exp.payerType === 'split') {
                if (filters.payer) {
-                 displayAmount = exp.splitDetails[filters.payer].amount;
+                 displayAmount = exp.splitDetails[filters.payer].amount / monthlyDivisor;
                  displayStatus = exp.splitDetails[filters.payer].paid ? 'paid' : 'pending';
                } else {
                  const allPaid = Object.values(exp.splitDetails).every(v => v.paid);
@@ -887,7 +898,7 @@ export default function App() {
                             <div key={mId} className={`flex items-center justify-between ${detail.paid ? 'text-emerald-600 font-medium' : 'text-slate-500'}`}>
                               <span className="truncate pr-2">• {m?.name}</span>
                               <div className="flex items-center gap-2 shrink-0">
-                                <span>{formatCurrency(detail.amount)}</span>
+                                <span>{formatCurrency(detail.amount / monthlyDivisor)}</span>
                                 {detail.paid ? <Check size={14} className="bg-emerald-100 rounded-full p-0.5"/> : <span className="text-[10px] bg-rose-50 text-rose-500 px-1.5 py-0.5 rounded font-bold">รอชำระ</span>}
                               </div>
                             </div>
@@ -899,8 +910,9 @@ export default function App() {
                 </div>
 
                 <div className="mt-4 sm:mt-0 w-full sm:w-auto flex sm:flex-col justify-between sm:justify-end items-center sm:items-end border-t border-slate-100 sm:border-0 pt-3 sm:pt-0">
-                  <div className={`text-lg sm:text-xl font-black ${showAsPaid ? 'text-slate-400' : 'text-blue-800'}`}>
+                  <div className={`text-lg sm:text-xl font-black flex items-baseline ${showAsPaid ? 'text-slate-400' : 'text-blue-800'}`}>
                     {formatCurrency(displayAmount)}
+                    {exp.paymentType === 'installment' && <span className="text-sm font-medium text-slate-500 ml-1">/ด.</span>}
                   </div>
                   
                   <div className="flex items-center space-x-1 sm:space-x-2 mt-1 sm:mt-2">
@@ -1104,7 +1116,10 @@ export default function App() {
            <div className="space-y-2.5 mb-8 text-left">
              {availableMembers.map(mId => {
                const m = members.find(mbr => mbr.id === mId);
-               const amount = expenseData.splitDetails[mId].amount;
+               
+               const monthlyDivisor = (expenseData.paymentType === 'installment' && expenseData.installmentMonths) ? expenseData.installmentMonths : 1;
+               const amount = expenseData.splitDetails[mId].amount / monthlyDivisor;
+               
                const isSelected = selectedMembers.includes(mId);
                return (
                  <div 
