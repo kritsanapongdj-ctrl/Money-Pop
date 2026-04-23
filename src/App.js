@@ -17,10 +17,12 @@ import {
 } from 'lucide-react';
 
 // --- Firebase Initialization ---
+// eslint-disable-next-line no-undef
 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+// eslint-disable-next-line no-undef
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'money-pop-app';
 
 // --- Modern Banking Theme Colors (Light Theme) ---
@@ -122,7 +124,8 @@ const ExpenseFormModal = ({ editingExpense, categories, sources, members, saving
     e.preventDefault();
     
     const amount = parseFloat(formData.totalAmount);
-    if (isNaN(amount) || amount <= 0) return alert("กรุณาใส่จำนวนเงินที่ถูกต้อง");
+    // eslint-disable-next-line no-undef
+    if (isNaN(amount) || amount <= 0) return window.alert("กรุณาใส่จำนวนเงินที่ถูกต้อง");
 
     let finalData = {
       ...formData,
@@ -138,7 +141,8 @@ const ExpenseFormModal = ({ editingExpense, categories, sources, members, saving
 
     if (formData.payerType === 'split') {
       const selectedMembers = Object.keys(splitSelection).filter(k => splitSelection[k]);
-      if (selectedMembers.length === 0) return alert("กรุณาเลือกคนที่ต้องหารอย่างน้อย 1 คน");
+      // eslint-disable-next-line no-undef
+      if (selectedMembers.length === 0) return window.alert("กรุณาเลือกคนที่ต้องหารอย่างน้อย 1 คน");
       
       const amountPerPerson = amount / selectedMembers.length;
       const splitData = {};
@@ -361,7 +365,9 @@ export default function App() {
   useEffect(() => {
     const initAuth = async () => {
       try {
+        // eslint-disable-next-line no-undef
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          // eslint-disable-next-line no-undef
           await signInWithCustomToken(auth, __initial_auth_token);
         } else {
           await signInAnonymously(auth);
@@ -527,7 +533,8 @@ export default function App() {
   };
 
   const deleteExpense = async (id) => {
-    if(confirm("ยืนยันการลบรายการนี้?")) {
+    // eslint-disable-next-line no-restricted-globals
+    if(window.confirm("ยืนยันการลบรายการนี้?")) {
       const exp = expenses.find(e => e.id === id);
       await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'expenses', id));
       
@@ -1045,7 +1052,8 @@ export default function App() {
     const storagePercent = Math.max(0.5, Math.min((storageBytes / maxStorage) * 100, 100)); 
 
     const handleClearData = async () => {
-      if (confirm("⚠️ คำเตือน: คุณแน่ใจหรือไม่ที่จะล้างข้อมูล 'รายการบิล' และ 'ประวัติกองกลาง' ทั้งหมด?\n\n(การกระทำนี้ไม่สามารถกู้คืนได้ แต่รายชื่อ, หมวดหมู่ และบัญชี จะยังคงอยู่)")) {
+      // eslint-disable-next-line no-restricted-globals
+      if (window.confirm("⚠️ คำเตือน: คุณแน่ใจหรือไม่ที่จะล้างข้อมูล 'รายการบิล' และ 'ประวัติกองกลาง' ทั้งหมด?\n\n(การกระทำนี้ไม่สามารถกู้คืนได้ แต่รายชื่อ, หมวดหมู่ และบัญชี จะยังคงอยู่)")) {
         try {
           const expensePromises = expenses.map(exp => deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'expenses', exp.id)));
           await Promise.all(expensePromises);
