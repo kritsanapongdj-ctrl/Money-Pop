@@ -8,7 +8,8 @@ import {
   Home, CreditCard, PiggyBank, Settings, Plus, Check, Trash2, Edit, 
   Filter, X, ShoppingBag, Coffee, Car, Home as HomeIcon, Smartphone,
   Zap, Image as ImageIcon, MessageCircle, ArrowUpRight, ArrowDownRight, Users, Database,
-  BookOpen, HeartPulse, ShoppingCart, TrendingUp, Gift, Briefcase, RefreshCw, Cloud, CloudOff
+  BookOpen, HeartPulse, ShoppingCart, TrendingUp, Gift, Briefcase, RefreshCw, Cloud, CloudOff,
+  MonitorPlay, Gamepad2, Music, Plane, Scissors, Shirt, Baby, FileText, Wrench, Dumbbell, Cat
 } from 'lucide-react';
 
 // ==========================================
@@ -36,24 +37,63 @@ const formatCurrency = (amount) => {
   return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(amount);
 };
 
-// Map keywords to specific icons
+// Map keywords to specific icons (Expanded Database)
 const getIconForCategory = (name) => {
   const n = name.toLowerCase();
-  if (n.includes('shopee') || n.includes('lazada') || n.includes('ช้อป')) return <ShoppingBag className="text-orange-500" />;
-  if (n.includes('line')) return <MessageCircle className="text-green-500" />;
-  if (n.includes('grab') || n.includes('เดินทาง') || n.includes('รถ') || n.includes('น้ำมัน')) return <Car className="text-emerald-500" />;
-  if (n.includes('อาหาร') || n.includes('กิน') || n.includes('ข้าว') || n.includes('เครื่องดื่ม')) return <Coffee className="text-amber-500" />;
-  if (n.includes('บ้าน') || n.includes('ที่พัก') || n.includes('เช่า') || n.includes('คอนโด')) return <HomeIcon className="text-blue-500" />;
-  if (n.includes('เน็ต') || n.includes('โทรศัพท์') || n.includes('มือถือ')) return <Smartphone className="text-indigo-500" />;
-  if (n.includes('ไฟ') || n.includes('น้ำ')) return <Zap className="text-yellow-500" />;
-  if (n.includes('บัตรเครดิต') || n.includes('บัตร') || n.includes('ผ่อน') || n.includes('หนี้')) return <CreditCard className="text-slate-600" />;
-  if (n.includes('ยา') || n.includes('สุขภาพ') || n.includes('พยาบาล') || n.includes('หาหมอ') || n.includes('ประกัน')) return <HeartPulse className="text-rose-500" />;
-  if (n.includes('เรียน') || n.includes('ศึกษา') || n.includes('หนังสือ') || n.includes('โรงเรียน')) return <BookOpen className="text-cyan-500" />;
-  if (n.includes('ของใช้') || n.includes('ซุปเปอร์') || n.includes('ตลาด') || n.includes('แม็คโคร') || n.includes('โลตัส')) return <ShoppingCart className="text-teal-500" />;
-  if (n.includes('ลงทุน') || n.includes('ออม') || n.includes('หุ้น') || n.includes('กองทุน')) return <TrendingUp className="text-emerald-600" />;
-  if (n.includes('ของขวัญ') || n.includes('บริจาค') || n.includes('ทำบุญ')) return <Gift className="text-pink-500" />;
-  if (n.includes('ทำงาน') || n.includes('ออฟฟิศ') || n.includes('อุปกรณ์')) return <Briefcase className="text-amber-700" />;
   
+  // ซื้อของ / ช้อปปิ้งออนไลน์
+  if (n.includes('shopee') || n.includes('lazada') || n.includes('ช้อป') || n.includes('ออนไลน์') || n.includes('tiktok')) return <ShoppingBag className="text-orange-500" />;
+  // การสื่อสาร
+  if (n.includes('line') || n.includes('แชท') || n.includes('ข้อความ')) return <MessageCircle className="text-green-500" />;
+  // เดินทาง
+  if (n.includes('grab') || n.includes('เดินทาง') || n.includes('รถ') || n.includes('น้ำมัน') || n.includes('taxi') || n.includes('bts') || n.includes('mrt') || n.includes('ทางด่วน') || n.includes('วิน')) return <Car className="text-emerald-500" />;
+  // อาหาร
+  if (n.includes('อาหาร') || n.includes('กิน') || n.includes('ข้าว') || n.includes('เครื่องดื่ม') || n.includes('ขนม') || n.includes('บุฟเฟ่ต์') || n.includes('คาเฟ่') || n.includes('กาแฟ')) return <Coffee className="text-amber-500" />;
+  // บ้าน / ที่พักอาศัย
+  if (n.includes('บ้าน') || n.includes('ที่พัก') || n.includes('เช่า') || n.includes('คอนโด') || n.includes('ส่วนกลาง') || n.includes('เฟอร์นิเจอร์')) return <HomeIcon className="text-blue-500" />;
+  // เทคโนโลยี / โทรศัพท์
+  if (n.includes('เน็ต') || n.includes('โทรศัพท์') || n.includes('มือถือ') || n.includes('รายเดือน') || n.includes('wifi') || n.includes('อินเทอร์เน็ต')) return <Smartphone className="text-indigo-500" />;
+  // สาธารณูปโภค
+  if (n.includes('ไฟ') || n.includes('น้ำ') || n.includes('แก๊ส')) return <Zap className="text-yellow-500" />;
+  // การเงิน / สินเชื่อ
+  if (n.includes('บัตรเครดิต') || n.includes('บัตร') || n.includes('ผ่อน') || n.includes('หนี้') || n.includes('สินเชื่อ') || n.includes('ดอกเบี้ย')) return <CreditCard className="text-slate-600" />;
+  // สุขภาพ / ประกัน
+  if (n.includes('ยา') || n.includes('สุขภาพ') || n.includes('พยาบาล') || n.includes('หาหมอ') || n.includes('ประกัน') || n.includes('คลินิก') || n.includes('วิตามิน')) return <HeartPulse className="text-rose-500" />;
+  // การศึกษา
+  if (n.includes('เรียน') || n.includes('ศึกษา') || n.includes('หนังสือ') || n.includes('โรงเรียน') || n.includes('คอร์ส') || n.includes('อบรม')) return <BookOpen className="text-cyan-500" />;
+  // ของใช้ในบ้าน
+  if (n.includes('ของใช้') || n.includes('ซุปเปอร์') || n.includes('ตลาด') || n.includes('แม็คโคร') || n.includes('โลตัส') || n.includes('สบู่') || n.includes('แชมพู')) return <ShoppingCart className="text-teal-500" />;
+  // การลงทุน
+  if (n.includes('ลงทุน') || n.includes('ออม') || n.includes('หุ้น') || n.includes('กองทุน') || n.includes('คริปโต') || n.includes('ทอง')) return <TrendingUp className="text-emerald-600" />;
+  // ให้คนอื่น / ทำบุญ
+  if (n.includes('ของขวัญ') || n.includes('บริจาค') || n.includes('ทำบุญ') || n.includes('ซอง') || n.includes('งานแต่ง') || n.includes('วันเกิด') || n.includes('ให้พ่อแม่')) return <Gift className="text-pink-500" />;
+  // งาน / อาชีพ
+  if (n.includes('ทำงาน') || n.includes('ออฟฟิศ') || n.includes('อุปกรณ์') || n.includes('คอมพิวเตอร์')) return <Briefcase className="text-amber-700" />;
+  
+  // --- เพิ่มเติมฐานข้อมูลไอคอนอัจฉริยะ ---
+  // บันเทิง / หนัง
+  if (n.includes('หนัง') || n.includes('netflix') || n.includes('youtube') || n.includes('ดูหนัง') || n.includes('โรงหนัง') || n.includes('disney')) return <MonitorPlay className="text-purple-500" />;
+  // เกมส์
+  if (n.includes('เกม') || n.includes('game') || n.includes('เติมเกม') || n.includes('ps5') || n.includes('nintendo') || n.includes('steam')) return <Gamepad2 className="text-violet-500" />;
+  // เพลง / คอนเสิร์ต
+  if (n.includes('เพลง') || n.includes('spotify') || n.includes('apple music') || n.includes('คอนเสิร์ต') || n.includes('ดนตรี')) return <Music className="text-fuchsia-500" />;
+  // ท่องเที่ยว
+  if (n.includes('เที่ยว') || n.includes('ทริป') || n.includes('ตั๋วเครื่องบิน') || n.includes('บิน') || n.includes('โรงแรม') || n.includes('พักผ่อน') || n.includes('ทัวร์')) return <Plane className="text-sky-500" />;
+  // ความงาม / สปา
+  if (n.includes('สวย') || n.includes('งาม') || n.includes('ตัดผม') || n.includes('ทำผม') || n.includes('เครื่องสำอาง') || n.includes('สกินแคร์') || n.includes('นวด') || n.includes('สปา') || n.includes('เล็บ')) return <Scissors className="text-pink-400" />;
+  // แฟชั่น / เสื้อผ้า
+  if (n.includes('เสื้อ') || n.includes('กางเกง') || n.includes('รองเท้า') || n.includes('กระเป๋า') || n.includes('ชุด') || n.includes('แฟชั่น') || n.includes('เครื่องประดับ')) return <Shirt className="text-fuchsia-400" />;
+  // เด็ก / ครอบครัว
+  if (n.includes('ลูก') || n.includes('เด็ก') || n.includes('ของเล่น') || n.includes('แพมเพิส') || n.includes('นมผง') || n.includes('ครอบครัว')) return <Baby className="text-yellow-500" />;
+  // ภาษี / ค่าธรรมเนียม
+  if (n.includes('ภาษี') || n.includes('ค่าธรรมเนียม') || n.includes('ค่าปรับ') || n.includes('ต่อภาษี')) return <FileText className="text-slate-500" />;
+  // ซ่อมแซม / บำรุงรักษา
+  if (n.includes('ซ่อม') || n.includes('ยาง') || n.includes('ล้างรถ') || n.includes('อะไหล่') || n.includes('บำรุงรักษา') || n.includes('ช่าง')) return <Wrench className="text-slate-600" />;
+  // กีฬา / ฟิตเนส
+  if (n.includes('ฟิตเนส') || n.includes('ออกกำลังกาย') || n.includes('กีฬา') || n.includes('แบด') || n.includes('เตะบอล') || n.includes('วิ่ง')) return <Dumbbell className="text-orange-600" />;
+  // สัตว์เลี้ยง
+  if (n.includes('สัตว์เลี้ยง') || n.includes('หมา') || n.includes('แมว') || n.includes('อาหารสัตว์') || n.includes('สัตวแพทย์') || n.includes('อาบน้ำหมา')) return <Cat className="text-orange-400" />;
+
   return <ImageIcon className="text-slate-400" />;
 };
 
@@ -100,7 +140,7 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
   const [formData, setFormData] = useState(editingExpense || {
     title: '', month: new Date().toISOString().slice(0, 7),
     categoryId: categories[0]?.id || '', sourceId: sources[0]?.id || '',
-    paymentType: 'normal', totalAmount: '', installmentMonths: '',
+    paymentType: 'normal', totalAmount: '', installmentMonths: '', currentInstallment: '1',
     payerType: 'single', payerId: members[0]?.id || '',
     splitDetails: {}
   });
@@ -128,8 +168,10 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
 
     if (formData.paymentType === 'installment') {
       finalData.installmentMonths = parseInt(formData.installmentMonths);
+      finalData.currentInstallment = parseInt(formData.currentInstallment) || 1;
     } else {
       delete finalData.installmentMonths;
+      delete finalData.currentInstallment;
     }
 
     if (formData.payerType === 'split') {
@@ -262,10 +304,21 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
             
             {formData.paymentType === 'installment' && (
               <div className="animate-fadeIn">
-                <label className={`block text-sm font-semibold ${theme.textMuted} mb-1.5`}>ระยะเวลาผ่อน (เดือน)</label>
-                <input type="number" required min="2" value={formData.installmentMonths} onChange={e=>setFormData({...formData, installmentMonths: e.target.value})} className={theme.input} />
+                <div className="grid grid-cols-2 gap-4">
+                   <div>
+                      <label className={`block text-sm font-semibold ${theme.textMuted} mb-1.5`}>ชำระงวดที่</label>
+                      <input type="number" required min="1" max={formData.installmentMonths || ""} value={formData.currentInstallment || 1} onChange={e=>setFormData({...formData, currentInstallment: e.target.value})} className={theme.input} />
+                   </div>
+                   <div>
+                      <label className={`block text-sm font-semibold ${theme.textMuted} mb-1.5`}>จากทั้งหมด (งวด)</label>
+                      <input type="number" required min="2" value={formData.installmentMonths} onChange={e=>setFormData({...formData, installmentMonths: e.target.value})} className={theme.input} />
+                   </div>
+                </div>
                 {formData.totalAmount && formData.installmentMonths && (
-                  <p className="text-sm text-blue-600 font-medium mt-2 bg-blue-50 p-2 rounded-lg">เฉลี่ย {formatCurrency(formData.totalAmount / formData.installmentMonths)} / เดือน</p>
+                  <p className="text-sm text-blue-600 font-medium mt-3 bg-blue-50 p-2.5 rounded-lg border border-blue-100 flex items-center justify-between">
+                    <span>เฉลี่ยชำระต่อเดือน:</span>
+                    <span className="font-black text-lg">{formatCurrency(formData.totalAmount / formData.installmentMonths)}</span>
+                  </p>
                 )}
               </div>
             )}
@@ -879,7 +932,11 @@ export default function App() {
                       <h3 className={`font-bold text-base sm:text-lg truncate ${showAsPaid ? 'text-slate-400 line-through' : theme.textMain}`}>
                         {exp.title}
                       </h3>
-                      {exp.paymentType === 'installment' && <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">ผ่อนชำระ</span>}
+                      {exp.paymentType === 'installment' && (
+                        <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2.5 py-0.5 rounded-full font-bold">
+                          ผ่อนชำระ {exp.currentInstallment && exp.installmentMonths ? `(งวดที่ ${exp.currentInstallment}/${exp.installmentMonths})` : ''}
+                        </span>
+                      )}
                     </div>
                     
                     <div className="flex flex-wrap text-xs text-slate-500 font-medium gap-x-2 gap-y-1 mt-1">
@@ -1087,7 +1144,7 @@ export default function App() {
 
         </div>
         <div className="text-center text-slate-400 text-xs mt-8">
-          Money-Pop Family Expenses v4.0 (Google Sheets DB)
+          Money-Pop Family Expenses v4.1 (Smart Icons)
         </div>
       </div>
     );
