@@ -1,11 +1,5 @@
 /* eslint-disable */
-import React, { useState, useEffect, useMemo } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { 
-  getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, 
-  query, addDoc, updateDoc 
-} from 'firebase/firestore';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, 
   Legend, ResponsiveContainer
@@ -14,31 +8,13 @@ import {
   Home, CreditCard, PiggyBank, Settings, Plus, Check, Trash2, Edit, 
   Filter, X, ShoppingBag, Coffee, Car, Home as HomeIcon, Smartphone,
   Zap, Image as ImageIcon, MessageCircle, ArrowUpRight, ArrowDownRight, Users, Database,
-  BookOpen, HeartPulse, ShoppingCart, TrendingUp, Gift, Briefcase
+  BookOpen, HeartPulse, ShoppingCart, TrendingUp, Gift, Briefcase, RefreshCw, Cloud, CloudOff
 } from 'lucide-react';
 
-// --- Firebase Initialization ---
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyBzheFmJxRaXAS-x_NxATO-C0b4mEof3QU",
-  authDomain: "money-pop-family.firebaseapp.com",
-  projectId: "money-pop-family",
-  storageBucket: "money-pop-family.firebasestorage.app",
-  messagingSenderId: "1009318556682",
-  appId: "1:1009318556682:web:84d4d7078e1e00d16d9bf3",
-  measurementId: "G-SWTHYSHP1L"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+// ==========================================
+// 1. นำ URL Web App ของ Google Sheet มาใส่ตรงนี้
+// ==========================================
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzUGbbiBAFO1xrf1QZcAEJb5rZ_9D8DZnC0qFKBBgQTkdzaPUK_MBvNW2-JQX0cgWFVKA/exec"; 
 
 // --- Modern Banking Theme Colors (Light Theme) ---
 const theme = {
@@ -81,17 +57,18 @@ const getIconForCategory = (name) => {
   return <ImageIcon className="text-slate-400" />;
 };
 
-const ListManager = ({ title, data, collectionName, db, appId }) => {
+const ListManager = ({ title, data, updateDB, dataKey, isCategory = false }) => {
   const [newItem, setNewItem] = useState('');
   
-  const handleAdd = async () => {
+  const handleAdd = () => {
     if(!newItem.trim()) return;
-    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', collectionName), { name: newItem });
+    const newItemObj = { id: Date.now().toString(), name: newItem };
+    updateDB({ [dataKey]: [...data, newItemObj] });
     setNewItem('');
   };
 
-  const handleDelete = async (id) => {
-    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', collectionName, id));
+  const handleDelete = (id) => {
+    updateDB({ [dataKey]: data.filter(item => item.id !== id) });
   };
 
   return (
@@ -105,7 +82,7 @@ const ListManager = ({ title, data, collectionName, db, appId }) => {
         {data.map(item => (
           <div key={item.id} className="flex justify-between items-center bg-slate-50 border border-slate-100 p-3 rounded-xl">
             <span className={`${theme.textMain} flex items-center text-sm font-medium`}>
-              {collectionName === 'categories' && <span className="mr-3 bg-white p-1.5 rounded-lg shadow-sm border border-slate-100">{getIconForCategory(item.name)}</span>}
+              {isCategory && <span className="mr-3 bg-white p-1.5 rounded-lg shadow-sm border border-slate-100">{getIconForCategory(item.name)}</span>}
               {item.name}
             </span>
             <button onClick={() => handleDelete(item.id)} className="text-slate-400 hover:text-red-500 transition-colors p-1"><Trash2 size={18}/></button>
@@ -117,7 +94,9 @@ const ListManager = ({ title, data, collectionName, db, appId }) => {
   );
 };
 
-const ExpenseFormModal = ({ editingExpense, categories, sources, members, savings, db, appId, setIsModalOpen, showToast, sendLineNotify }) => {
+const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, showToast, sendLineNotify }) => {
+  const { expenses, categories, sources, members, savings } = dbData;
+
   const [formData, setFormData] = useState(editingExpense || {
     title: '', month: new Date().toISOString().slice(0, 7),
     categoryId: categories[0]?.id || '', sourceId: sources[0]?.id || '',
@@ -135,7 +114,7 @@ const ExpenseFormModal = ({ editingExpense, categories, sources, members, saving
     return {};
   });
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     
     const amount = parseFloat(formData.totalAmount);
@@ -173,13 +152,14 @@ const ExpenseFormModal = ({ editingExpense, categories, sources, members, saving
       delete finalData.splitDetails;
     }
 
-    const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'expenses');
+    let newExpenses = [];
     if (editingExpense) {
-      await updateDoc(doc(colRef, editingExpense.id), finalData);
+      newExpenses = expenses.map(exp => exp.id === editingExpense.id ? { ...finalData, id: editingExpense.id, createdAt: editingExpense.createdAt } : exp);
       showToast("อัปเดตรายการเรียบร้อย");
     } else {
+      finalData.id = Date.now().toString();
       finalData.createdAt = Date.now();
-      await addDoc(colRef, finalData);
+      newExpenses = [finalData, ...expenses];
       showToast("เพิ่มรายการเรียบร้อย");
       sendLineNotify(`มีการเพิ่มบิลใหม่: ${formData.title} ยอด ${formatCurrency(amount)}`);
     }
@@ -203,6 +183,7 @@ const ExpenseFormModal = ({ editingExpense, categories, sources, members, saving
     }
 
     const netDeduction = newAmountDeducted - oldAmountDeducted;
+    let newSavings = savings;
 
     if (netDeduction !== 0) {
       const newTotal = savings.currentAmount - netDeduction;
@@ -214,12 +195,14 @@ const ExpenseFormModal = ({ editingExpense, categories, sources, members, saving
         date: new Date().toISOString()
       };
 
-      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'funds', 'savings'), {
+      newSavings = {
         currentAmount: newTotal,
         transactions: [newTransaction, ...savings.transactions].slice(0, 50)
-      });
+      };
     }
 
+    // เซฟขึ้นคลาวด์
+    updateDB({ expenses: newExpenses, savings: newSavings });
     setIsModalOpen(false);
   };
 
@@ -347,14 +330,75 @@ const ExpenseFormModal = ({ editingExpense, categories, sources, members, saving
 };
 
 export default function App() {
-  const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   
-  const [expenses, setExpenses] = useState([]);
-  const [members, setMembers] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [sources, setSources] = useState([]);
-  const [savings, setSavings] = useState({ currentAmount: 0, transactions: [] });
+  // Database State รวมทุกอย่างไว้ในที่เดียวเพื่อให้ส่งไปคลาวด์ง่ายๆ
+  const [dbData, setDbData] = useState({
+    expenses: [], members: [], categories: [], sources: [], savings: { currentAmount: 0, transactions: [] }
+  });
+  
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // ฟังก์ชันดึงข้อมูลจาก Google Sheets (หรือ Local Storage ถ้าลืมใส่ URL)
+  const fetchData = useCallback(async (silent = false) => {
+    if (!silent) setIsLoading(true);
+    
+    // ตรวจสอบว่าใส่ URL หรือยัง
+    if (!GAS_URL || GAS_URL.includes("ใส่_URL")) {
+      const local = localStorage.getItem("moneyPopDB_Sheets");
+      if (local) setDbData(JSON.parse(local));
+      if (!silent) setIsLoading(false);
+      return;
+    }
+
+    try {
+      if(!silent) setIsSyncing(true);
+      const res = await fetch(GAS_URL);
+      const data = await res.json();
+      if (data && data.expenses) {
+        setDbData(data);
+        localStorage.setItem("moneyPopDB_Sheets", JSON.stringify(data)); // สำรองไว้ในเครื่องด้วย
+      }
+    } catch (e) {
+      console.error("Fetch error:", e);
+      // ถ้าเน็ตหลุด ดึงจาก Local Storage แทน
+      const local = localStorage.getItem("moneyPopDB_Sheets");
+      if (local) setDbData(JSON.parse(local));
+    }
+    
+    if (!silent) setIsLoading(false);
+    setIsSyncing(false);
+  }, []);
+
+  // ดึงข้อมูลครั้งแรกเมื่อโหลดแอป
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // ฟังก์ชันอัปเดตข้อมูล (บันทึกลง Local และส่งไปคลาวด์ Google Sheets)
+  const updateDB = async (newDataFields) => {
+    const updatedData = { ...dbData, ...newDataFields };
+    setDbData(updatedData); // อัปเดตหน้าจอทันที ไม่ต้องรอคลาวด์
+    localStorage.setItem("moneyPopDB_Sheets", JSON.stringify(updatedData)); // เซฟลงเครื่อง
+
+    if (!GAS_URL || GAS_URL.includes("ใส่_URL")) return;
+
+    setIsSyncing(true);
+    try {
+      await fetch(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify(updatedData),
+        // สำคัญมาก: ใช้ text/plain เพื่อป้องกันปัญหา CORS Policy ของ Google Apps Script
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+      });
+    } catch (e) {
+      console.error("Save to cloud error:", e);
+    }
+    setIsSyncing(false);
+  };
+
+  const { expenses, members, categories, sources, savings } = dbData;
 
   const [filters, setFilters] = useState({
     month: new Date().toISOString().slice(0, 7),
@@ -375,76 +419,12 @@ export default function App() {
   const [savingsSource, setSavingsSource] = useState('');
   const [savingsType, setSavingsType] = useState('add');
 
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
-      } catch (err) {
-        console.error("Auth Error:", err);
-      }
-    };
-    initAuth();
-    const unsubscribe = onAuthStateChanged(auth, setUser);
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (!user) return;
-
-    const getPath = (colName) => collection(db, 'artifacts', appId, 'public', 'data', colName);
-
-    const unsubMembers = onSnapshot(query(getPath('members')), (snap) => {
-      setMembers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    }, (err) => console.error("Error fetching members:", err));
-
-    const unsubCategories = onSnapshot(query(getPath('categories')), (snap) => {
-      setCategories(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    }, (err) => console.error("Error fetching categories:", err));
-
-    const unsubSources = onSnapshot(query(getPath('sources')), (snap) => {
-      setSources(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    }, (err) => console.error("Error fetching sources:", err));
-
-    const unsubExpenses = onSnapshot(query(getPath('expenses')), (snap) => {
-      const exps = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      exps.sort((a, b) => b.createdAt - a.createdAt);
-      setExpenses(exps);
-    }, (err) => console.error("Error fetching expenses:", err));
-
-    const unsubSavings = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'funds', 'savings'), (docSnap) => {
-      if (docSnap.exists()) {
-        setSavings(docSnap.data());
-      } else {
-        setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'funds', 'savings'), { currentAmount: 0, transactions: [] });
-      }
-    }, (err) => console.error("Error fetching savings:", err));
-
-    return () => {
-      unsubMembers(); unsubCategories(); unsubSources(); unsubExpenses(); unsubSavings();
-    };
-  }, [user]);
-
   const sendLineMessage = async (message) => {
     const gasUrl = "ใส่_WEB_APP_URL_จาก_GOOGLE_APPS_SCRIPT_ที่นี่"; 
-    
-    if (gasUrl === "ใส่_WEB_APP_URL_จาก_GOOGLE_APPS_SCRIPT_ที่นี่" || !gasUrl) {
-       console.log("LINE Messaging API Simulated:", message);
-       showToast("ระบบจำลองส่ง LINE (กรุณาใส่ URL ของ GAS)");
-       return;
-    }
-
+    if (gasUrl === "ใส่_WEB_APP_URL_จาก_GOOGLE_APPS_SCRIPT_ที่นี่" || !gasUrl) return;
     try {
-      await fetch(gasUrl, {
-        method: 'POST',
-        body: JSON.stringify({ message: message }),
-      });
-    } catch (error) {
-      console.error("LINE API Error:", error);
-    }
+      await fetch(gasUrl, { method: 'POST', body: JSON.stringify({ message: message }) });
+    } catch (error) { console.error("LINE API Error:", error); }
   };
 
   const showToast = (msg) => {
@@ -509,63 +489,61 @@ export default function App() {
     setSplitSelectModal({ isOpen: false, expId: null, members: [] });
   };
 
-  const processBulkPayment = async () => {
-    if (!user) return;
-    const expenseCollection = collection(db, 'artifacts', appId, 'public', 'data', 'expenses');
-
+  const processBulkPayment = () => {
     let totalPaid = 0;
+    
+    const newExpenses = expenses.map(expense => {
+      if (!selectedForPay[expense.id]) return expense; 
 
-    for (const [expId, payData] of Object.entries(selectedForPay)) {
-      const expenseRef = doc(expenseCollection, expId);
-      const expense = expenses.find(e => e.id === expId);
-      if (!expense) continue;
+      const payData = selectedForPay[expense.id];
+      const newExpense = { ...expense };
 
       if (payData.type === 'single') {
-        await updateDoc(expenseRef, { status: 'paid' });
-        totalPaid += expense.totalAmount;
+        newExpense.status = 'paid';
+        totalPaid += newExpense.totalAmount;
       } else if (payData.type === 'split') {
-        const newSplitDetails = { ...expense.splitDetails };
+        const newSplitDetails = { ...newExpense.splitDetails };
         payData.memberIds.forEach(mId => {
           newSplitDetails[mId].paid = true;
           totalPaid += newSplitDetails[mId].amount;
         });
         
         const allPaid = Object.values(newSplitDetails).every(v => v.paid);
-        await updateDoc(expenseRef, { 
-          splitDetails: newSplitDetails,
-          status: allPaid ? 'paid' : 'pending' 
-        });
+        newExpense.splitDetails = newSplitDetails;
+        newExpense.status = allPaid ? 'paid' : 'pending';
       }
-    }
+      return newExpense;
+    });
 
+    updateDB({ expenses: newExpenses });
     setSelectedForPay({});
     showToast(`ชำระเรียบร้อย ยอดรวม ${formatCurrency(totalPaid)}`);
     sendLineMessage(`💸 ชำระรายการเรียบร้อย\nยอดรวม: ${formatCurrency(totalPaid)}`);
   };
 
-  const deleteExpense = async (id) => {
+  const deleteExpense = (id) => {
     if(window.confirm("ยืนยันการลบรายการนี้?")) {
       const exp = expenses.find(e => e.id === id);
-      await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'expenses', id));
+      const newExpenses = expenses.filter(e => e.id !== id);
+      let newSavings = savings;
       
       if (exp) {
         const sourceObj = sources.find(s => s.id === exp.sourceId);
         if (sourceObj && sourceObj.name.includes('กองกลาง')) {
-          const newTotal = savings.currentAmount + exp.totalAmount;
-          const newTransaction = {
-            id: Date.now().toString(),
-            type: 'add',
-            amount: exp.totalAmount,
-            source: `คืนเงิน (ลบบิล: ${exp.title})`,
-            date: new Date().toISOString()
+          newSavings = {
+            currentAmount: savings.currentAmount + exp.totalAmount,
+            transactions: [{
+              id: Date.now().toString(),
+              type: 'add',
+              amount: exp.totalAmount,
+              source: `คืนเงิน (ลบบิล: ${exp.title})`,
+              date: new Date().toISOString()
+            }, ...savings.transactions].slice(0, 50)
           };
-          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'funds', 'savings'), {
-            currentAmount: newTotal,
-            transactions: [newTransaction, ...savings.transactions].slice(0, 50)
-          });
         }
       }
 
+      updateDB({ expenses: newExpenses, savings: newSavings });
       showToast("ลบรายการสำเร็จ");
     }
   };
@@ -958,7 +936,7 @@ export default function App() {
   };
 
   const renderSavings = () => {
-    const handleSaveFund = async (e) => {
+    const handleSaveFund = (e) => {
       e.preventDefault();
       if (!savingsAmount || isNaN(savingsAmount)) return;
       
@@ -973,10 +951,12 @@ export default function App() {
         date: new Date().toISOString()
       };
 
-      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'funds', 'savings'), {
+      const newSavings = {
         currentAmount: newTotal,
         transactions: [newTransaction, ...savings.transactions].slice(0, 50) 
-      });
+      };
+
+      updateDB({ savings: newSavings });
 
       const typeText = savingsType === 'add' ? 'รับเงินเข้ากองกลาง' : 'ใช้จ่ายจากกองกลาง';
       sendLineMessage(`💰 ${typeText}\nยอดเงิน: ${formatCurrency(val)}\nรายการ: ${savingsSource || 'ไม่ระบุ'}\nยอดคงเหลือ: ${formatCurrency(newTotal)}`);
@@ -1047,63 +1027,38 @@ export default function App() {
   };
 
   const renderSettings = () => {
-    const getStorageUsage = () => {
-      const dataStr = JSON.stringify({ expenses, members, categories, sources, savings });
-      const bytes = new Blob([dataStr]).size; 
-      return bytes;
-    };
-    
-    const maxStorage = 5 * 1024 * 1024; 
-    const storageBytes = getStorageUsage();
-    const storageKB = (storageBytes / 1024).toFixed(2);
-    const storageMB = (storageBytes / (1024 * 1024)).toFixed(2);
-    const displayStorage = storageBytes > 1024 * 1024 ? `${storageMB} MB` : `${storageKB} KB`;
-    
-    const storagePercent = Math.max(0.5, Math.min((storageBytes / maxStorage) * 100, 100)); 
-
-    const handleClearData = async () => {
+    const handleClearData = () => {
       if (window.confirm("⚠️ คำเตือน: คุณแน่ใจหรือไม่ที่จะล้างข้อมูล 'รายการบิล' และ 'ประวัติกองกลาง' ทั้งหมด?\n\n(การกระทำนี้ไม่สามารถกู้คืนได้ แต่รายชื่อ, หมวดหมู่ และบัญชี จะยังคงอยู่)")) {
-        try {
-          const expensePromises = expenses.map(exp => deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'expenses', exp.id)));
-          await Promise.all(expensePromises);
-
-          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'funds', 'savings'), {
-            currentAmount: 0,
-            transactions: []
-          });
-
-          showToast("ล้างข้อมูลธุรกรรมเรียบร้อยแล้ว");
-          sendLineMessage("⚠️ มีการกดล้างข้อมูลบิลและประวัติกองกลางทั้งหมดจากระบบ");
-        } catch (err) {
-          console.error("Error clearing data:", err);
-          showToast("เกิดข้อผิดพลาดในการล้างข้อมูล");
-        }
+        updateDB({ expenses: [], savings: { currentAmount: 0, transactions: [] } });
+        showToast("ล้างข้อมูลธุรกรรมเรียบร้อยแล้ว");
       }
     };
 
     return (
       <div className="space-y-6 animate-fadeIn px-4 sm:px-0 pb-6">
-        <h2 className={`text-2xl font-black ${theme.primary} pt-2`}>ตั้งค่าระบบ</h2>
+        <h2 className={`text-2xl font-black ${theme.primary} pt-2`}>ตั้งค่าระบบ (เชื่อมต่อ Google Sheets)</h2>
+        
+        {(!GAS_URL || GAS_URL.includes("ใส่_URL")) ? (
+          <div className="bg-amber-50 text-amber-800 p-4 rounded-2xl border border-amber-200 text-sm font-medium">
+            ⚠️ <b>โหมดออฟไลน์:</b> คุณยังไม่ได้ใส่ URL ของ Google Sheets ข้อมูลตอนนี้ถูกเก็บไว้ในเครื่องของคุณเท่านั้น (คนอื่นจะไม่เห็น)
+          </div>
+        ) : (
+          <div className="bg-emerald-50 text-emerald-800 p-4 rounded-2xl border border-emerald-200 text-sm font-medium flex items-center">
+            <Cloud size={18} className="mr-2 shrink-0"/> <b>เชื่อมต่อคลาวด์แล้ว:</b> ข้อมูลของคุณจะถูกซิงค์กับ Google Sheets อัตโนมัติและแชร์ให้คนอื่นดูได้
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          <ListManager title="รายชื่อสมาชิกครอบครัว" data={members} collectionName="members" db={db} appId={appId} />
-          <ListManager title="หมวดหมู่ค่าใช้จ่าย" data={categories} collectionName="categories" db={db} appId={appId} />
-          <ListManager title="แหล่งที่มา/บัญชีการเงิน" data={sources} collectionName="sources" db={db} appId={appId} />
+          <ListManager title="รายชื่อสมาชิกครอบครัว" data={members} updateDB={updateDB} dataKey="members" />
+          <ListManager title="หมวดหมู่ค่าใช้จ่าย" data={categories} updateDB={updateDB} dataKey="categories" isCategory={true} />
+          <ListManager title="แหล่งที่มา/บัญชีการเงิน" data={sources} updateDB={updateDB} dataKey="sources" />
           
           <div className={`${theme.card} p-5 md:col-span-2 lg:col-span-3`}>
-            <h3 className={`font-bold ${theme.primary} mb-4 flex items-center`}><Database size={18} className="mr-2"/> พื้นที่จัดเก็บข้อมูล (Storage)</h3>
+            <h3 className={`font-bold ${theme.primary} mb-4 flex items-center`}><Database size={18} className="mr-2"/> การจัดการข้อมูล</h3>
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-              <div className="flex justify-between text-sm mb-2">
-                 <span className="text-slate-600 font-medium">ปริมาณข้อมูลที่ใช้ไป (โดยประมาณ)</span>
-                 <span className={`font-bold ${storagePercent > 80 ? 'text-rose-600' : 'text-blue-600'}`}>
-                   {displayStorage} / 5.00 MB
-                 </span>
-              </div>
-              <div className="w-full bg-slate-200 rounded-full h-2.5 mb-4 overflow-hidden">
-                <div className={`h-full rounded-full transition-all duration-500 ${storagePercent > 80 ? 'bg-rose-500' : 'bg-blue-500'}`} style={{ width: `${storagePercent}%` }}></div>
-              </div>
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mt-4 pt-4 border-t border-slate-200">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-2">
                  <p className="text-xs text-slate-500 max-w-xl leading-relaxed">
-                   ระบบจะคำนวณขนาดข้อมูลบิลและประวัติทั้งหมด หากพื้นที่ใกล้เต็มหรือต้องการเริ่มรอบปีใหม่ คุณสามารถกด <b>"ล้างข้อมูล"</b> เพื่อลบประวัติ <b>"บิล"</b> และ <b>"กองกลาง"</b> ทั้งหมดทิ้งได้ (รายชื่อและหมวดหมู่จะไม่ถูกลบ)
+                   หากต้องการเริ่มต้นใหม่ (เช่น เริ่มรอบปีใหม่) คุณสามารถกด <b>"ล้างข้อมูล"</b> เพื่อลบประวัติ <b>"บิล"</b> และ <b>"กองกลาง"</b> ทั้งหมดทิ้งได้ (รายชื่อและหมวดหมู่จะไม่ถูกลบ)
                  </p>
                  <button 
                    onClick={handleClearData}
@@ -1117,7 +1072,7 @@ export default function App() {
 
         </div>
         <div className="text-center text-slate-400 text-xs mt-8">
-          Money-Pop Family Expenses v2.0
+          Money-Pop Family Expenses v4.0 (Google Sheets DB)
         </div>
       </div>
     );
@@ -1182,13 +1137,13 @@ export default function App() {
     );
   };
 
-  if (!user) return <div className="min-h-screen bg-slate-50 flex items-center justify-center text-blue-800 font-bold animate-pulse">กำลังโหลดข้อมูล...</div>;
+  if (isLoading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center text-blue-800 font-bold animate-pulse">กำลังโหลดข้อมูล...</div>;
 
   return (
     <div className={`min-h-screen ${theme.bg} font-sans selection:bg-blue-200`}>
       <div className="max-w-md sm:max-w-3xl lg:max-w-5xl mx-auto flex flex-col h-screen overflow-hidden bg-slate-50/50 sm:border-x border-slate-200 shadow-sm">
         
-        <header className="bg-white px-4 sm:px-6 py-4 flex justify-between items-center border-b border-slate-200 shadow-[0_2px_10px_rgba(0,0,0,0.02)] z-30">
+        <header className="bg-white px-4 sm:px-6 py-3 flex justify-between items-center border-b border-slate-200 shadow-[0_2px_10px_rgba(0,0,0,0.02)] z-30">
           <div className="flex items-center gap-2">
             <div className="bg-blue-800 text-white p-1.5 rounded-lg shadow-sm">
               <Zap size={20} className="fill-white" />
@@ -1197,10 +1152,26 @@ export default function App() {
               MONEY<span className="text-blue-500">-POP</span>
             </div>
           </div>
-          <div className="flex items-center">
-             <div className="bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 flex items-center">
-               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse mr-2"></span>
-               <span className="text-xs font-bold text-emerald-700">Syncing</span>
+          <div className="flex items-center gap-2">
+             <button 
+                onClick={() => fetchData(true)}
+                className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                title="ดึงข้อมูลล่าสุดจาก Google Sheets"
+             >
+                <RefreshCw size={18} className={isSyncing ? "animate-spin text-blue-500" : ""} />
+             </button>
+             <div className={`px-3 py-1.5 rounded-full border flex items-center ${GAS_URL && !GAS_URL.includes("ใส่_URL") ? 'bg-emerald-50 border-emerald-100' : 'bg-slate-100 border-slate-200'}`}>
+               {GAS_URL && !GAS_URL.includes("ใส่_URL") ? (
+                 <>
+                  <Cloud size={12} className="text-emerald-500 mr-2" />
+                  <span className="text-xs font-bold text-emerald-700">{isSyncing ? 'Syncing...' : 'Synced'}</span>
+                 </>
+               ) : (
+                 <>
+                  <CloudOff size={12} className="text-slate-400 mr-2" />
+                  <span className="text-xs font-bold text-slate-500">Offline</span>
+                 </>
+               )}
              </div>
           </div>
         </header>
@@ -1218,12 +1189,8 @@ export default function App() {
       {isModalOpen && (
         <ExpenseFormModal 
           editingExpense={editingExpense}
-          categories={categories}
-          sources={sources}
-          members={members}
-          savings={savings}
-          db={db}
-          appId={appId}
+          dbData={dbData}
+          updateDB={updateDB}
           setIsModalOpen={setIsModalOpen}
           showToast={showToast}
           sendLineNotify={sendLineMessage}
