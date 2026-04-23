@@ -14,7 +14,7 @@ import {
 // ==========================================
 // 1. นำ URL Web App ของ Google Sheet มาใส่ตรงนี้
 // ==========================================
-const GAS_URL = "https://script.google.com/macros/s/AKfycbzUGbbiBAFO1xrf1QZcAEJb5rZ_9D8DZnC0qFKBBgQTkdzaPUK_MBvNW2-JQX0cgWFVKA/exec"; 
+const GAS_URL = "ใส่_URL_WEB_APP_ของ_GOOGLE_SHEET_ที่นี่"; 
 
 // --- Modern Banking Theme Colors (Light Theme) ---
 const theme = {
@@ -624,29 +624,32 @@ export default function App() {
     filteredExpenses.forEach(exp => {
       const catName = categories.find(c => c.id === exp.categoryId)?.name || 'ไม่ระบุ';
       
+      // หาตัวหาร (ถ้าจ่ายเต็ม หารด้วย 1, ถ้าผ่อน ให้หารด้วยจำนวนเดือน เพื่อหายอดต่อเดือน)
+      const monthlyDivisor = (exp.paymentType === 'installment' && exp.installmentMonths) ? exp.installmentMonths : 1;
+
       let amountConsidered = 0;
       let isPaidConsidered = false;
 
       if (exp.payerType === 'single') {
-        amountConsidered = exp.totalAmount;
+        amountConsidered = exp.totalAmount / monthlyDivisor;
         isPaidConsidered = exp.status === 'paid';
       } else {
         if (filters.payer) {
-          amountConsidered = exp.splitDetails[filters.payer].amount;
+          amountConsidered = exp.splitDetails[filters.payer].amount / monthlyDivisor;
           isPaidConsidered = exp.splitDetails[filters.payer].paid;
         } else {
-          amountConsidered = exp.totalAmount;
+          amountConsidered = exp.totalAmount / monthlyDivisor;
           let localPaid = 0;
           let localPending = 0;
           Object.values(exp.splitDetails).forEach(v => {
-            if(v.paid) localPaid += v.amount;
-            else localPending += v.amount;
+            if(v.paid) localPaid += (v.amount / monthlyDivisor);
+            else localPending += (v.amount / monthlyDivisor);
           });
           totalPaid += localPaid;
           totalPending += localPending;
           
           if (!categoryDataMap[catName]) categoryDataMap[catName] = 0;
-          categoryDataMap[catName] += exp.totalAmount;
+          categoryDataMap[catName] += amountConsidered;
           return; 
         }
       }
@@ -661,12 +664,12 @@ export default function App() {
         if (exp.payerType === 'single') {
           const mName = members.find(m => m.id === exp.payerId)?.name || 'ไม่ระบุ';
           if (!memberDataMap[mName]) memberDataMap[mName] = 0;
-          memberDataMap[mName] += exp.totalAmount;
+          memberDataMap[mName] += (exp.totalAmount / monthlyDivisor);
         } else {
           Object.entries(exp.splitDetails).forEach(([mId, details]) => {
             const mName = members.find(m => m.id === mId)?.name || 'ไม่ระบุ';
             if (!memberDataMap[mName]) memberDataMap[mName] = 0;
-            memberDataMap[mName] += details.amount;
+            memberDataMap[mName] += (details.amount / monthlyDivisor);
           });
         }
       }
@@ -690,7 +693,7 @@ export default function App() {
             
             <div className="w-full md:w-5/12 lg:w-1/2 flex flex-col justify-between">
               <div className="mb-4 md:mb-0">
-                <p className="text-blue-200 text-sm font-medium mb-1">ยอดรวมทั้งหมดเดือนนี้</p>
+                <p className="text-blue-200 text-sm font-medium mb-1">ยอดใช้จ่ายจริงเดือนนี้ (เฉลี่ยผ่อนชำระแล้ว)</p>
                 <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight">{formatCurrency(grandTotal)}</h2>
               </div>
               
