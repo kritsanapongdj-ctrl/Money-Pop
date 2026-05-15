@@ -15,7 +15,7 @@ import {
 // ==========================================
 // 1. นำ URL Web App ของ Google Sheet มาใส่ตรงนี้
 // ==========================================
-const GAS_URL = "https://script.google.com/macros/s/AKfycbzbO-BbqufnRT6kZ1j8u8PLmhxPM3MSCY_VRZIUOsV6KlGIbGeOAgBVH_7HnVBSvSne/exec"; 
+const GAS_URL = "ใส่_URL_WEB_APP_ของ_GOOGLE_SHEET_ที่นี่"; 
 
 // --- Modern Banking Theme Colors (Light Theme) ---
 const theme = {
@@ -41,57 +41,30 @@ const formatCurrency = (amount) => {
 const getIconForCategory = (name) => {
   const n = name.toLowerCase();
   
-  // ซื้อของ / ช้อปปิ้งออนไลน์
   if (n.includes('shopee') || n.includes('lazada') || n.includes('ช้อป') || n.includes('ออนไลน์') || n.includes('tiktok')) return <ShoppingBag className="text-orange-500" />;
-  // การสื่อสาร
   if (n.includes('line') || n.includes('แชท') || n.includes('ข้อความ')) return <MessageCircle className="text-green-500" />;
-  // เดินทาง
   if (n.includes('grab') || n.includes('เดินทาง') || n.includes('รถ') || n.includes('น้ำมัน') || n.includes('taxi') || n.includes('bts') || n.includes('mrt') || n.includes('ทางด่วน') || n.includes('วิน')) return <Car className="text-emerald-500" />;
-  // อาหาร
   if (n.includes('อาหาร') || n.includes('กิน') || n.includes('ข้าว') || n.includes('เครื่องดื่ม') || n.includes('ขนม') || n.includes('บุฟเฟ่ต์') || n.includes('คาเฟ่') || n.includes('กาแฟ')) return <Coffee className="text-amber-500" />;
-  // บ้าน / ที่พักอาศัย
   if (n.includes('บ้าน') || n.includes('ที่พัก') || n.includes('เช่า') || n.includes('คอนโด') || n.includes('ส่วนกลาง') || n.includes('เฟอร์นิเจอร์')) return <HomeIcon className="text-blue-500" />;
-  // เทคโนโลยี / โทรศัพท์
   if (n.includes('เน็ต') || n.includes('โทรศัพท์') || n.includes('มือถือ') || n.includes('รายเดือน') || n.includes('wifi') || n.includes('อินเทอร์เน็ต')) return <Smartphone className="text-indigo-500" />;
-  // สาธารณูปโภค
   if (n.includes('ไฟ') || n.includes('น้ำ') || n.includes('แก๊ส')) return <Zap className="text-yellow-500" />;
-  // การเงิน / สินเชื่อ
   if (n.includes('บัตรเครดิต') || n.includes('บัตร') || n.includes('ผ่อน') || n.includes('หนี้') || n.includes('สินเชื่อ') || n.includes('ดอกเบี้ย')) return <CreditCard className="text-slate-600" />;
-  // สุขภาพ / ประกัน
   if (n.includes('ยา') || n.includes('สุขภาพ') || n.includes('พยาบาล') || n.includes('หาหมอ') || n.includes('ประกัน') || n.includes('คลินิก') || n.includes('วิตามิน')) return <HeartPulse className="text-rose-500" />;
-  // การศึกษา
   if (n.includes('เรียน') || n.includes('ศึกษา') || n.includes('หนังสือ') || n.includes('โรงเรียน') || n.includes('คอร์ส') || n.includes('อบรม')) return <BookOpen className="text-cyan-500" />;
-  // ของใช้ในบ้าน
   if (n.includes('ของใช้') || n.includes('ซุปเปอร์') || n.includes('ตลาด') || n.includes('แม็คโคร') || n.includes('โลตัส') || n.includes('สบู่') || n.includes('แชมพู')) return <ShoppingCart className="text-teal-500" />;
-  // การลงทุน
   if (n.includes('ลงทุน') || n.includes('ออม') || n.includes('หุ้น') || n.includes('กองทุน') || n.includes('คริปโต') || n.includes('ทอง')) return <TrendingUp className="text-emerald-600" />;
-  // ให้คนอื่น / ทำบุญ
   if (n.includes('ของขวัญ') || n.includes('บริจาค') || n.includes('ทำบุญ') || n.includes('ซอง') || n.includes('งานแต่ง') || n.includes('วันเกิด') || n.includes('ให้พ่อแม่')) return <Gift className="text-pink-500" />;
-  // งาน / อาชีพ
   if (n.includes('ทำงาน') || n.includes('ออฟฟิศ') || n.includes('อุปกรณ์') || n.includes('คอมพิวเตอร์')) return <Briefcase className="text-amber-700" />;
-  
-  // --- เพิ่มเติมฐานข้อมูลไอคอนอัจฉริยะ ---
-  // บันเทิง / หนัง
   if (n.includes('หนัง') || n.includes('netflix') || n.includes('youtube') || n.includes('ดูหนัง') || n.includes('โรงหนัง') || n.includes('disney')) return <MonitorPlay className="text-purple-500" />;
-  // เกมส์
   if (n.includes('เกม') || n.includes('game') || n.includes('เติมเกม') || n.includes('ps5') || n.includes('nintendo') || n.includes('steam')) return <Gamepad2 className="text-violet-500" />;
-  // เพลง / คอนเสิร์ต
   if (n.includes('เพลง') || n.includes('spotify') || n.includes('apple music') || n.includes('คอนเสิร์ต') || n.includes('ดนตรี')) return <Music className="text-fuchsia-500" />;
-  // ท่องเที่ยว
   if (n.includes('เที่ยว') || n.includes('ทริป') || n.includes('ตั๋วเครื่องบิน') || n.includes('บิน') || n.includes('โรงแรม') || n.includes('พักผ่อน') || n.includes('ทัวร์')) return <Plane className="text-sky-500" />;
-  // ความงาม / สปา
   if (n.includes('สวย') || n.includes('งาม') || n.includes('ตัดผม') || n.includes('ทำผม') || n.includes('เครื่องสำอาง') || n.includes('สกินแคร์') || n.includes('นวด') || n.includes('สปา') || n.includes('เล็บ')) return <Scissors className="text-pink-400" />;
-  // แฟชั่น / เสื้อผ้า
   if (n.includes('เสื้อ') || n.includes('กางเกง') || n.includes('รองเท้า') || n.includes('กระเป๋า') || n.includes('ชุด') || n.includes('แฟชั่น') || n.includes('เครื่องประดับ')) return <Shirt className="text-fuchsia-400" />;
-  // เด็ก / ครอบครัว
   if (n.includes('ลูก') || n.includes('เด็ก') || n.includes('ของเล่น') || n.includes('แพมเพิส') || n.includes('นมผง') || n.includes('ครอบครัว')) return <Baby className="text-yellow-500" />;
-  // ภาษี / ค่าธรรมเนียม
   if (n.includes('ภาษี') || n.includes('ค่าธรรมเนียม') || n.includes('ค่าปรับ') || n.includes('ต่อภาษี')) return <FileText className="text-slate-500" />;
-  // ซ่อมแซม / บำรุงรักษา
   if (n.includes('ซ่อม') || n.includes('ยาง') || n.includes('ล้างรถ') || n.includes('อะไหล่') || n.includes('บำรุงรักษา') || n.includes('ช่าง')) return <Wrench className="text-slate-600" />;
-  // กีฬา / ฟิตเนส
   if (n.includes('ฟิตเนส') || n.includes('ออกกำลังกาย') || n.includes('กีฬา') || n.includes('แบด') || n.includes('เตะบอล') || n.includes('วิ่ง')) return <Dumbbell className="text-orange-600" />;
-  // สัตว์เลี้ยง
   if (n.includes('สัตว์เลี้ยง') || n.includes('หมา') || n.includes('แมว') || n.includes('อาหารสัตว์') || n.includes('สัตวแพทย์') || n.includes('อาบน้ำหมา')) return <Cat className="text-orange-400" />;
 
   return <ImageIcon className="text-slate-400" />;
@@ -166,6 +139,8 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
       updatedAt: Date.now()
     };
 
+    let generatedExpenses = []; // สำหรับเก็บข้อมูลบิลล่วงหน้าถ้ามีการผ่อนชำระ
+
     if (formData.paymentType === 'installment') {
       finalData.installmentMonths = parseInt(formData.installmentMonths);
       finalData.currentInstallment = parseInt(formData.currentInstallment) || 1;
@@ -194,19 +169,78 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
       delete finalData.splitDetails;
     }
 
-    let newExpenses = [];
+    let newExpenses = [...expenses];
+    let deductedAmountFromCentral = 0; // ยอดที่จะหักจากกองกลางรอบนี้
+
     if (editingExpense) {
-      newExpenses = expenses.map(exp => exp.id === editingExpense.id ? { ...finalData, id: editingExpense.id, createdAt: editingExpense.createdAt } : exp);
+      // แก้ไขรายการเดิม: ไม่ออโต้สร้างบิลล่วงหน้า เพื่อป้องกันการสร้างซ้ำซ้อน
+      finalData.id = editingExpense.id;
+      finalData.createdAt = editingExpense.createdAt;
+      newExpenses = expenses.map(exp => exp.id === editingExpense.id ? finalData : exp);
       showToast("อัปเดตรายการเรียบร้อย");
+      
+      if (finalData.paymentType === 'installment') {
+        deductedAmountFromCentral = amount / finalData.installmentMonths;
+      } else {
+        deductedAmountFromCentral = amount;
+      }
     } else {
-      finalData.id = Date.now().toString();
-      finalData.createdAt = Date.now();
-      newExpenses = [finalData, ...expenses];
-      showToast("เพิ่มรายการเรียบร้อย");
+      // เพิ่มรายการใหม่
+      if (formData.paymentType === 'installment') {
+        // ออโต้สร้างบิลล่วงหน้า
+        const totalMonths = parseInt(formData.installmentMonths);
+        const startInstallment = parseInt(formData.currentInstallment);
+        let [startYear, startMonth] = formData.month.split('-').map(Number);
+
+        for (let i = startInstallment; i <= totalMonths; i++) {
+          const monthOffset = i - startInstallment;
+          let targetMonth = startMonth + monthOffset;
+          let targetYear = startYear;
+
+          // จัดการการข้ามปี
+          while (targetMonth > 12) {
+            targetMonth -= 12;
+            targetYear += 1;
+          }
+
+          const formattedMonth = `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
+
+          // จัดการสถานะการหารจ่ายของบิลล่วงหน้า (ถ้ามี)
+          let futureSplitDetails = {};
+          if (finalData.payerType === 'split') {
+            Object.keys(finalData.splitDetails).forEach(mId => {
+              futureSplitDetails[mId] = {
+                amount: finalData.splitDetails[mId].amount,
+                paid: i === startInstallment ? finalData.splitDetails[mId].paid : false // บิลเดือนหน้าให้รอชำระเสมอ
+              };
+            });
+          }
+
+          generatedExpenses.push({
+            ...finalData,
+            id: Date.now().toString() + "-" + i, // สร้าง ID ไม่ซ้ำ
+            month: formattedMonth,
+            currentInstallment: i,
+            status: i === startInstallment ? finalData.status : 'pending', // บิลเดือนหน้าให้สถานะรอชำระเสมอ
+            splitDetails: finalData.payerType === 'split' ? futureSplitDetails : undefined,
+            createdAt: Date.now() + i
+          });
+        }
+        newExpenses = [...generatedExpenses, ...expenses];
+        showToast(`เพิ่มรายการ และสร้างบิลล่วงหน้า ${generatedExpenses.length} งวดเรียบร้อย`);
+        deductedAmountFromCentral = amount / finalData.installmentMonths; // หักกองกลางเฉพาะงวดแรกที่บันทึก
+      } else {
+        // รายการจ่ายเต็มปกติ
+        finalData.id = Date.now().toString();
+        finalData.createdAt = Date.now();
+        newExpenses = [finalData, ...expenses];
+        showToast("เพิ่มรายการเรียบร้อย");
+        deductedAmountFromCentral = amount;
+      }
       sendLineNotify(`มีการเพิ่มบิลใหม่: ${formData.title} ยอด ${formatCurrency(amount)}`);
     }
 
-    // --- หัก/คืน เงินกองกลางอัตโนมัติ ---
+    // --- จัดการหัก/คืน เงินกองกลางอัตโนมัติ ---
     const newSourceObj = sources.find(s => s.id === formData.sourceId);
     const isNewSourceCentralFund = newSourceObj && newSourceObj.name.includes('กองกลาง');
 
@@ -215,13 +249,15 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
       const oldSourceObj = sources.find(s => s.id === editingExpense.sourceId);
       const isOldSourceCentralFund = oldSourceObj && oldSourceObj.name.includes('กองกลาง');
       if (isOldSourceCentralFund) {
-        oldAmountDeducted = editingExpense.totalAmount;
+        oldAmountDeducted = editingExpense.paymentType === 'installment' && editingExpense.installmentMonths 
+            ? editingExpense.totalAmount / editingExpense.installmentMonths 
+            : editingExpense.totalAmount;
       }
     }
 
     let newAmountDeducted = 0;
     if (isNewSourceCentralFund) {
-      newAmountDeducted = amount;
+      newAmountDeducted = deductedAmountFromCentral;
     }
 
     const netDeduction = newAmountDeducted - oldAmountDeducted;
@@ -263,11 +299,11 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
           
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={`block text-sm font-semibold ${theme.textMuted} mb-1.5`}>เดือนประจำรอบ</label>
+              <label className={`block text-sm font-semibold ${theme.textMuted} mb-1.5`}>เดือนประจำรอบ (แรกเริ่ม)</label>
               <input type="month" required value={formData.month} onChange={e=>setFormData({...formData, month: e.target.value})} className={theme.input} />
             </div>
             <div>
-              <label className={`block text-sm font-semibold ${theme.textMuted} mb-1.5`}>ยอดรวม (บาท)</label>
+              <label className={`block text-sm font-semibold ${theme.textMuted} mb-1.5`}>ยอดรวมเต็มบิล (บาท)</label>
               <input type="number" required value={formData.totalAmount} onChange={e=>setFormData({...formData, totalAmount: e.target.value})} className={theme.input} placeholder="0.00" />
             </div>
           </div>
@@ -315,10 +351,17 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
                    </div>
                 </div>
                 {formData.totalAmount && formData.installmentMonths && (
-                  <p className="text-sm text-blue-600 font-medium mt-3 bg-blue-50 p-2.5 rounded-lg border border-blue-100 flex items-center justify-between">
-                    <span>เฉลี่ยชำระต่อเดือน:</span>
-                    <span className="font-black text-lg">{formatCurrency(formData.totalAmount / formData.installmentMonths)}</span>
-                  </p>
+                  <div className="mt-3">
+                    <p className="text-sm text-blue-600 font-medium bg-blue-50 p-2.5 rounded-lg border border-blue-100 flex items-center justify-between">
+                      <span>เฉลี่ยชำระต่อเดือน:</span>
+                      <span className="font-black text-lg">{formatCurrency(formData.totalAmount / formData.installmentMonths)}</span>
+                    </p>
+                    {!editingExpense && (
+                      <p className="text-xs text-amber-600 mt-2 flex items-center bg-amber-50 p-2 rounded-lg">
+                        <Zap size={14} className="mr-1 shrink-0"/> ระบบจะสร้างบิลสำหรับงวดล่วงหน้าให้อัตโนมัติหลังกดบันทึก
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             )}
@@ -585,7 +628,7 @@ export default function App() {
   };
 
   const deleteExpense = (id) => {
-    if(window.confirm("ยืนยันการลบรายการนี้?")) {
+    if(window.confirm("ยืนยันการลบรายการนี้? (ระบบจะลบเฉพาะรายการของเดือนนี้เท่านั้น)")) {
       const exp = expenses.find(e => e.id === id);
       const newExpenses = expenses.filter(e => e.id !== id);
       let newSavings = savings;
@@ -593,12 +636,15 @@ export default function App() {
       if (exp) {
         const sourceObj = sources.find(s => s.id === exp.sourceId);
         if (sourceObj && sourceObj.name.includes('กองกลาง')) {
+          const monthlyDivisor = (exp.paymentType === 'installment' && exp.installmentMonths) ? exp.installmentMonths : 1;
+          const returnedAmount = exp.totalAmount / monthlyDivisor;
+          
           newSavings = {
-            currentAmount: savings.currentAmount + exp.totalAmount,
+            currentAmount: savings.currentAmount + returnedAmount,
             transactions: [{
               id: Date.now().toString(),
               type: 'add',
-              amount: exp.totalAmount,
+              amount: returnedAmount,
               source: `คืนเงิน (ลบบิล: ${exp.title})`,
               date: new Date().toISOString()
             }, ...savings.transactions].slice(0, 50)
@@ -1144,7 +1190,7 @@ export default function App() {
 
         </div>
         <div className="text-center text-slate-400 text-xs mt-8">
-          Money-Pop Family Expenses v4.1 (Smart Icons)
+          Money-Pop Family Expenses v5.0 (Auto-Installment)
         </div>
       </div>
     );
