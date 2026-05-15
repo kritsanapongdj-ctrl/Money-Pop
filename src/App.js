@@ -15,7 +15,7 @@ import {
 // ==========================================
 // 1. นำ URL Web App ของ Google Sheet มาใส่ตรงนี้
 // ==========================================
-const GAS_URL = "ใส่_URL_WEB_APP_ของ_GOOGLE_SHEET_ที่นี่"; 
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzbO-BbqufnRT6kZ1j8u8PLmhxPM3MSCY_VRZIUOsV6KlGIbGeOAgBVH_7HnVBSvSne/exec"; 
 
 // --- Modern Banking Theme Colors (Light Theme) ---
 const theme = {
@@ -140,6 +140,9 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
     };
 
     let generatedExpenses = []; // สำหรับเก็บข้อมูลบิลล่วงหน้าถ้ามีการผ่อนชำระ
+    // กลุ่ม ID (Group ID) ของบิลผ่อนชำระ จะเอาไว้ระบุว่าเป็นบิลเดียวกัน
+    const installmentGroupId = editingExpense ? editingExpense.installmentGroupId || editingExpense.id : Date.now().toString();
+    finalData.installmentGroupId = installmentGroupId;
 
     if (formData.paymentType === 'installment') {
       finalData.installmentMonths = parseInt(formData.installmentMonths);
@@ -147,6 +150,7 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
     } else {
       delete finalData.installmentMonths;
       delete finalData.currentInstallment;
+      delete finalData.installmentGroupId;
     }
 
     if (formData.payerType === 'split') {
@@ -173,21 +177,68 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
     let deductedAmountFromCentral = 0; // ยอดที่จะหักจากกองกลางรอบนี้
 
     if (editingExpense) {
-      // แก้ไขรายการเดิม: ไม่ออโต้สร้างบิลล่วงหน้า เพื่อป้องกันการสร้างซ้ำซ้อน
+      // --- อัปเดตบิลเก่า ---
       finalData.id = editingExpense.id;
       finalData.createdAt = editingExpense.createdAt;
-      newExpenses = expenses.map(exp => exp.id === editingExpense.id ? finalData : exp);
-      showToast("อัปเดตรายการเรียบร้อย");
       
       if (finalData.paymentType === 'installment') {
-        deductedAmountFromCentral = amount / finalData.installmentMonths;
+         // ถ้าเป็นการแก้ไขบิลผ่อนชำระ ให้ลบบิลล่วงหน้าของ Group นี้ออกให้หมดก่อน แล้วค่อยสร้างใหม่
+         const cleanExpenses = expenses.filter(exp => exp.installmentGroupId !== installmentGroupId || exp.id === editingExpense.id);
+         
+         const totalMonths = parseInt(formData.installmentMonths);
+         const startInstallment = parseInt(formData.currentInstallment);
+         let [startYear, startMonth] = formData.month.split('-').map(Number);
+         
+         generatedExpenses.push(finalData); // เอาบิลเดือนนี้ใส่ไว้ก่อน
+         
+         for (let i = startInstallment + 1; i <= totalMonths; i++) {
+           const monthOffset = i - startInstallment;
+           let targetMonth = startMonth + monthOffset;
+           let targetYear = startYear;
+
+           while (targetMonth > 12) {
+             targetMonth -= 12;
+             targetYear += 1;
+           }
+
+           const formattedMonth = `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
+           
+           let futureSplitDetails = {};
+           if (finalData.payerType === 'split') {
+             Object.keys(finalData.splitDetails).forEach(mId => {
+               futureSplitDetails[mId] = {
+                 amount: finalData.splitDetails[mId].amount,
+                 paid: false // บิลเดือนหน้าให้รอชำระเสมอ
+               };
+             });
+           }
+
+           generatedExpenses.push({
+             ...finalData,
+             id: installmentGroupId + "-" + i, // สร้าง ID แบบจัดกลุ่ม
+             month: formattedMonth,
+             currentInstallment: i,
+             status: 'pending', 
+             splitDetails: finalData.payerType === 'split' ? futureSplitDetails : undefined,
+             createdAt: finalData.createdAt + i // ให้เรียงลำดับถูก
+           });
+         }
+         
+         // แทนที่บิลเดิมด้วยบิลใหม่ (ที่รวมล่วงหน้าแล้ว)
+         newExpenses = [...generatedExpenses, ...cleanExpenses.filter(e => e.id !== editingExpense.id)];
+         showToast(`อัปเดตรายการผ่อนชำระเรียบร้อย`);
+         deductedAmountFromCentral = amount / finalData.installmentMonths;
+         
       } else {
-        deductedAmountFromCentral = amount;
+         // ถ้าแก้เป็นบิลปกติ ไม่ผ่อนชำระ
+         newExpenses = expenses.map(exp => exp.id === editingExpense.id ? finalData : exp);
+         showToast("อัปเดตรายการเรียบร้อย");
+         deductedAmountFromCentral = amount;
       }
+
     } else {
-      // เพิ่มรายการใหม่
+      // --- เพิ่มบิลใหม่ ---
       if (formData.paymentType === 'installment') {
-        // ออโต้สร้างบิลล่วงหน้า
         const totalMonths = parseInt(formData.installmentMonths);
         const startInstallment = parseInt(formData.currentInstallment);
         let [startYear, startMonth] = formData.month.split('-').map(Number);
@@ -197,7 +248,6 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
           let targetMonth = startMonth + monthOffset;
           let targetYear = startYear;
 
-          // จัดการการข้ามปี
           while (targetMonth > 12) {
             targetMonth -= 12;
             targetYear += 1;
@@ -205,32 +255,30 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
 
           const formattedMonth = `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
 
-          // จัดการสถานะการหารจ่ายของบิลล่วงหน้า (ถ้ามี)
           let futureSplitDetails = {};
           if (finalData.payerType === 'split') {
             Object.keys(finalData.splitDetails).forEach(mId => {
               futureSplitDetails[mId] = {
                 amount: finalData.splitDetails[mId].amount,
-                paid: i === startInstallment ? finalData.splitDetails[mId].paid : false // บิลเดือนหน้าให้รอชำระเสมอ
+                paid: i === startInstallment ? finalData.splitDetails[mId].paid : false
               };
             });
           }
 
           generatedExpenses.push({
             ...finalData,
-            id: Date.now().toString() + "-" + i, // สร้าง ID ไม่ซ้ำ
+            id: i === startInstallment ? installmentGroupId : installmentGroupId + "-" + i,
             month: formattedMonth,
             currentInstallment: i,
-            status: i === startInstallment ? finalData.status : 'pending', // บิลเดือนหน้าให้สถานะรอชำระเสมอ
+            status: i === startInstallment ? finalData.status : 'pending',
             splitDetails: finalData.payerType === 'split' ? futureSplitDetails : undefined,
             createdAt: Date.now() + i
           });
         }
         newExpenses = [...generatedExpenses, ...expenses];
         showToast(`เพิ่มรายการ และสร้างบิลล่วงหน้า ${generatedExpenses.length} งวดเรียบร้อย`);
-        deductedAmountFromCentral = amount / finalData.installmentMonths; // หักกองกลางเฉพาะงวดแรกที่บันทึก
+        deductedAmountFromCentral = amount / finalData.installmentMonths; 
       } else {
-        // รายการจ่ายเต็มปกติ
         finalData.id = Date.now().toString();
         finalData.createdAt = Date.now();
         newExpenses = [finalData, ...expenses];
@@ -279,7 +327,6 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
       };
     }
 
-    // เซฟขึ้นคลาวด์
     updateDB({ expenses: newExpenses, savings: newSavings });
     setIsModalOpen(false);
   };
@@ -356,11 +403,9 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
                       <span>เฉลี่ยชำระต่อเดือน:</span>
                       <span className="font-black text-lg">{formatCurrency(formData.totalAmount / formData.installmentMonths)}</span>
                     </p>
-                    {!editingExpense && (
-                      <p className="text-xs text-amber-600 mt-2 flex items-center bg-amber-50 p-2 rounded-lg">
-                        <Zap size={14} className="mr-1 shrink-0"/> ระบบจะสร้างบิลสำหรับงวดล่วงหน้าให้อัตโนมัติหลังกดบันทึก
-                      </p>
-                    )}
+                    <p className="text-xs text-amber-600 mt-2 flex items-center bg-amber-50 p-2 rounded-lg">
+                      <Zap size={14} className="mr-1 shrink-0"/> ระบบจะสร้าง(หรือแก้ไข)บิลสำหรับงวดล่วงหน้าให้อัตโนมัติหลังกดบันทึก
+                    </p>
                   </div>
                 )}
               </div>
@@ -628,6 +673,7 @@ export default function App() {
   };
 
   const deleteExpense = (id) => {
+    // แจ้งเตือนเพื่อให้ผู้ใช้ทราบว่า หากลบบิลนี้ไปแล้ว บิลในงวดอื่นๆ (ถ้ามี) จะยังอยู่ ต้องตามไปลบเอง
     if(window.confirm("ยืนยันการลบรายการนี้? (ระบบจะลบเฉพาะรายการของเดือนนี้เท่านั้น)")) {
       const exp = expenses.find(e => e.id === id);
       const newExpenses = expenses.filter(e => e.id !== id);
