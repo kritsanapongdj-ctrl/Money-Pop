@@ -10,13 +10,13 @@ import {
   Zap, Image as ImageIcon, MessageCircle, ArrowUpRight, ArrowDownRight, Users, Database,
   BookOpen, HeartPulse, ShoppingCart, TrendingUp, Gift, Briefcase, RefreshCw, Cloud, CloudOff,
   MonitorPlay, Gamepad2, Music, Plane, Scissors, Shirt, Baby, FileText, Wrench, Dumbbell, Cat,
-  Mail, Send
+  Mail, Send, Undo
 } from 'lucide-react';
 
 // ==========================================
 // 1. นำ URL Web App ของ Google Sheet มาใส่ตรงนี้
 // ==========================================
-const GAS_URL = "https://docs.google.com/spreadsheets/d/1tfz15iDlexM-DjGSwzIPST0zPmrcH8ixyrHMpk-zuQc/edit?gid=0#gid=0"; 
+const GAS_URL = "ใส่_URL_WEB_APP_ของ_GOOGLE_SHEET_ที่นี่"; 
 
 // --- Modern Banking Theme Colors ---
 const theme = {
@@ -652,6 +652,44 @@ export default function App() {
     showToast(`ชำระเรียบร้อย ยอดรวม ${formatCurrency(totalPaid)}`);
   };
 
+  // --- ฟังก์ชันยกเลิกการชำระเงิน (Undo Payment) ---
+  const undoPayment = (expense) => {
+    if(window.confirm("คุณต้องการยกเลิกสถานะการชำระเงินของรายการนี้ใช่หรือไม่?")) {
+      const newExpense = { ...expense };
+      
+      if (newExpense.payerType === 'single') {
+        newExpense.status = 'pending';
+      } else if (newExpense.payerType === 'split') {
+        const newSplitDetails = { ...newExpense.splitDetails };
+        
+        if (filters.payer) {
+          // หากกำลัง Filter ดูเฉพาะบุคคล ให้ยกเลิกเฉพาะคนนั้น
+          newSplitDetails[filters.payer].paid = false;
+        } else {
+          // หากดูภาพรวม ให้ยกเลิกสถานะจ่ายแล้วของทุกคนในบิลนั้น
+          Object.keys(newSplitDetails).forEach(mId => {
+            newSplitDetails[mId].paid = false;
+          });
+        }
+        
+        newExpense.splitDetails = newSplitDetails;
+        newExpense.status = 'pending';
+      }
+
+      const newExpenses = expenses.map(e => e.id === expense.id ? newExpense : e);
+      updateDB({ expenses: newExpenses });
+      
+      // เอาออกจากตะกร้าที่เลือกไว้ด้วยเผื่อค้างอยู่
+      if (selectedForPay[expense.id]) {
+        const newSelected = { ...selectedForPay };
+        delete newSelected[expense.id];
+        setSelectedForPay(newSelected);
+      }
+
+      showToast("ยกเลิกการชำระเงินสำเร็จ");
+    }
+  };
+
   const deleteExpenseGroup = (groupId) => {
     if(window.confirm("คุณต้องการลบบิลผ่อนชำระล่วงหน้าทั้งหมดในชุดนี้ด้วยหรือไม่?\n\n- กด OK เพื่อลบทั้งหมด\n- กด Cancel เพื่อลบเฉพาะเดือนนี้")) {
        updateDB({ expenses: expenses.filter(e => e.groupId !== groupId) });
@@ -1018,6 +1056,13 @@ export default function App() {
                     ) : (
                       <span className="text-rose-600 text-xs font-bold bg-rose-50 px-2.5 py-1 rounded-full">รอชำระ</span>
                     )}
+
+                    {(showAsPaid || isPartiallyPaid) && (
+                      <button onClick={() => undoPayment(exp)} className="p-1.5 sm:p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="ยกเลิกการชำระเงิน">
+                        <Undo size={16} />
+                      </button>
+                    )}
+
                     <button onClick={() => { setEditingExpense(exp); setIsModalOpen(true); }} className="p-1.5 sm:p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Edit size={16} /></button>
                     <button onClick={() => deleteExpense(exp.id, exp.groupId)} className="p-1.5 sm:p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"><Trash2 size={16} /></button>
                   </div>
