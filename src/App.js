@@ -9,15 +9,16 @@ import {
   Filter, X, ShoppingBag, Coffee, Car, Home as HomeIcon, Smartphone,
   Zap, Image as ImageIcon, MessageCircle, ArrowUpRight, ArrowDownRight, Users, Database,
   BookOpen, HeartPulse, ShoppingCart, TrendingUp, Gift, Briefcase, RefreshCw, Cloud, CloudOff,
-  MonitorPlay, Gamepad2, Music, Plane, Scissors, Shirt, Baby, FileText, Wrench, Dumbbell, Cat
+  MonitorPlay, Gamepad2, Music, Plane, Scissors, Shirt, Baby, FileText, Wrench, Dumbbell, Cat,
+  Mail, Send
 } from 'lucide-react';
 
 // ==========================================
 // 1. นำ URL Web App ของ Google Sheet มาใส่ตรงนี้
 // ==========================================
-const GAS_URL = "https://script.google.com/macros/s/AKfycbzbO-BbqufnRT6kZ1j8u8PLmhxPM3MSCY_VRZIUOsV6KlGIbGeOAgBVH_7HnVBSvSne/exec"; 
+const GAS_URL = "https://docs.google.com/spreadsheets/d/1tfz15iDlexM-DjGSwzIPST0zPmrcH8ixyrHMpk-zuQc/edit?gid=0#gid=0"; 
 
-// --- Modern Banking Theme Colors (Light Theme) ---
+// --- Modern Banking Theme Colors ---
 const theme = {
   bg: "bg-slate-50", 
   card: "bg-white rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100",
@@ -37,10 +38,9 @@ const formatCurrency = (amount) => {
   return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(amount);
 };
 
-// Map keywords to specific icons (Expanded Database)
 const getIconForCategory = (name) => {
+  if (!name) return <ImageIcon className="text-slate-400" />;
   const n = name.toLowerCase();
-  
   if (n.includes('shopee') || n.includes('lazada') || n.includes('ช้อป') || n.includes('ออนไลน์') || n.includes('tiktok')) return <ShoppingBag className="text-orange-500" />;
   if (n.includes('line') || n.includes('แชท') || n.includes('ข้อความ')) return <MessageCircle className="text-green-500" />;
   if (n.includes('grab') || n.includes('เดินทาง') || n.includes('รถ') || n.includes('น้ำมัน') || n.includes('taxi') || n.includes('bts') || n.includes('mrt') || n.includes('ทางด่วน') || n.includes('วิน')) return <Car className="text-emerald-500" />;
@@ -66,10 +66,52 @@ const getIconForCategory = (name) => {
   if (n.includes('ซ่อม') || n.includes('ยาง') || n.includes('ล้างรถ') || n.includes('อะไหล่') || n.includes('บำรุงรักษา') || n.includes('ช่าง')) return <Wrench className="text-slate-600" />;
   if (n.includes('ฟิตเนส') || n.includes('ออกกำลังกาย') || n.includes('กีฬา') || n.includes('แบด') || n.includes('เตะบอล') || n.includes('วิ่ง')) return <Dumbbell className="text-orange-600" />;
   if (n.includes('สัตว์เลี้ยง') || n.includes('หมา') || n.includes('แมว') || n.includes('อาหารสัตว์') || n.includes('สัตวแพทย์') || n.includes('อาบน้ำหมา')) return <Cat className="text-orange-400" />;
-
   return <ImageIcon className="text-slate-400" />;
 };
 
+// --- Component: Member Manager ---
+const MemberManager = ({ data, updateDB }) => {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  
+  const handleAdd = () => {
+    if(!name.trim()) return;
+    const newItemObj = { id: Date.now().toString(), name: name, email: email };
+    updateDB({ members: [...data, newItemObj] });
+    setName(''); setEmail('');
+  };
+
+  const handleDelete = (id) => {
+    updateDB({ members: data.filter(item => item.id !== id) });
+  };
+
+  return (
+    <div className={`${theme.card} p-5`}>
+      <h3 className={`font-bold ${theme.primary} mb-4 flex items-center`}><Users size={18} className="mr-2"/>รายชื่อสมาชิก & อีเมล</h3>
+      <div className="flex flex-col gap-2 mb-4">
+        <input type="text" value={name} onChange={e=>setName(e.target.value)} className={theme.input} placeholder="ชื่อสมาชิก..." />
+        <div className="flex gap-2">
+          <input type="email" value={email} onChange={e=>setEmail(e.target.value)} className={theme.input} placeholder="อีเมล (ถ้ามี)..." />
+          <button onClick={handleAdd} className={`${theme.button} px-4 rounded-xl flex items-center justify-center`}><Plus size={20}/></button>
+        </div>
+      </div>
+      <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+        {data.map(item => (
+          <div key={item.id} className="flex justify-between items-center bg-slate-50 border border-slate-100 p-3 rounded-xl">
+            <div className="flex flex-col">
+              <span className={`${theme.textMain} text-sm font-bold`}>{item.name}</span>
+              {item.email && <span className="text-xs text-slate-400">{item.email}</span>}
+            </div>
+            <button onClick={() => handleDelete(item.id)} className="text-slate-400 hover:text-red-500 transition-colors p-1"><Trash2 size={18}/></button>
+          </div>
+        ))}
+        {data.length === 0 && <div className="text-center text-slate-400 text-sm py-4">ยังไม่มีข้อมูล</div>}
+      </div>
+    </div>
+  );
+};
+
+// --- Component: Standard List Manager ---
 const ListManager = ({ title, data, updateDB, dataKey, isCategory = false }) => {
   const [newItem, setNewItem] = useState('');
   
@@ -107,13 +149,14 @@ const ListManager = ({ title, data, updateDB, dataKey, isCategory = false }) => 
   );
 };
 
-const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, showToast, sendLineNotify }) => {
+// --- Component: Expense Form Modal ---
+const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, showToast }) => {
   const { expenses, categories, sources, members, savings } = dbData;
 
   const [formData, setFormData] = useState(editingExpense || {
     title: '', month: new Date().toISOString().slice(0, 7),
     categoryId: categories[0]?.id || '', sourceId: sources[0]?.id || '',
-    paymentType: 'normal', totalAmount: '', installmentMonths: '', currentInstallment: '1',
+    paymentType: 'normal', totalAmount: '', installmentMonths: '',
     payerType: 'single', payerId: members[0]?.id || '',
     splitDetails: {}
   });
@@ -133,179 +176,100 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
     const amount = parseFloat(formData.totalAmount);
     if (isNaN(amount) || amount <= 0) return window.alert("กรุณาใส่จำนวนเงินที่ถูกต้อง");
 
-    let finalData = {
-      ...formData,
-      totalAmount: amount,
-      updatedAt: Date.now()
-    };
+    let finalData = { ...formData, updatedAt: Date.now() };
 
-    let generatedExpenses = []; // สำหรับเก็บข้อมูลบิลล่วงหน้าถ้ามีการผ่อนชำระ
-    // กลุ่ม ID (Group ID) ของบิลผ่อนชำระ จะเอาไว้ระบุว่าเป็นบิลเดียวกัน
-    const installmentGroupId = editingExpense ? editingExpense.installmentGroupId || editingExpense.id : Date.now().toString();
-    finalData.installmentGroupId = installmentGroupId;
+    let generatedExpenses = [];
+    const groupId = (editingExpense && editingExpense.groupId) ? editingExpense.groupId : Date.now().toString();
+    
+    let cleanExpenses = expenses;
+    if (editingExpense) {
+      if (editingExpense.groupId) {
+        cleanExpenses = expenses.filter(e => e.groupId !== editingExpense.groupId);
+      } else {
+        cleanExpenses = expenses.filter(e => e.id !== editingExpense.id);
+      }
+    }
 
     if (formData.paymentType === 'installment') {
-      finalData.installmentMonths = parseInt(formData.installmentMonths);
-      finalData.currentInstallment = parseInt(formData.currentInstallment) || 1;
+      const totalMonths = parseInt(formData.installmentMonths);
+      if (!totalMonths || totalMonths < 2) return window.alert("ผ่อนชำระต้องมากกว่า 1 งวด");
+      
+      const monthlyTotalAmount = amount / totalMonths; 
+      const [startYear, startMonth] = formData.month.split('-').map(Number);
+
+      for (let i = 1; i <= totalMonths; i++) {
+        let targetMonth = startMonth + (i - 1);
+        let targetYear = startYear;
+        while (targetMonth > 12) { targetMonth -= 12; targetYear += 1; }
+        const formattedMonth = `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
+
+        let splitData = {};
+        if (formData.payerType === 'split') {
+          const selectedMembers = Object.keys(splitSelection).filter(k => splitSelection[k]);
+          if (selectedMembers.length === 0) return window.alert("กรุณาเลือกคนที่ต้องหารอย่างน้อย 1 คน");
+          const monthlyPerPerson = monthlyTotalAmount / selectedMembers.length;
+          
+          selectedMembers.forEach(mId => {
+            splitData[mId] = { amount: monthlyPerPerson, paid: false };
+          });
+        }
+
+        generatedExpenses.push({
+          ...finalData,
+          id: `${groupId}-${i}`,
+          groupId: groupId,
+          month: formattedMonth,
+          totalAmount: monthlyTotalAmount, 
+          installmentMonths: totalMonths,
+          currentInstallment: i,
+          payerType: formData.payerType,
+          payerId: formData.payerType === 'single' ? formData.payerId : undefined,
+          splitDetails: formData.payerType === 'split' ? splitData : undefined,
+          status: 'pending', 
+          createdAt: Date.now() + i
+        });
+      }
     } else {
       delete finalData.installmentMonths;
       delete finalData.currentInstallment;
-      delete finalData.installmentGroupId;
-    }
-
-    if (formData.payerType === 'split') {
-      const selectedMembers = Object.keys(splitSelection).filter(k => splitSelection[k]);
-      if (selectedMembers.length === 0) return window.alert("กรุณาเลือกคนที่ต้องหารอย่างน้อย 1 คน");
+      finalData.totalAmount = amount;
       
-      const amountPerPerson = amount / selectedMembers.length;
-      const splitData = {};
-      
-      selectedMembers.forEach(mId => {
-        const alreadyPaid = editingExpense?.splitDetails?.[mId]?.paid || false;
-        splitData[mId] = { amount: amountPerPerson, paid: alreadyPaid };
-      });
-      
-      finalData.splitDetails = splitData;
-      finalData.status = Object.values(splitData).every(v => v.paid) ? 'paid' : 'pending';
-      delete finalData.payerId;
-    } else {
-      finalData.status = editingExpense ? editingExpense.status : 'pending';
-      delete finalData.splitDetails;
-    }
-
-    let newExpenses = [...expenses];
-    let deductedAmountFromCentral = 0; // ยอดที่จะหักจากกองกลางรอบนี้
-
-    if (editingExpense) {
-      // --- อัปเดตบิลเก่า ---
-      finalData.id = editingExpense.id;
-      finalData.createdAt = editingExpense.createdAt;
-      
-      if (finalData.paymentType === 'installment') {
-         // ถ้าเป็นการแก้ไขบิลผ่อนชำระ ให้ลบบิลล่วงหน้าของ Group นี้ออกให้หมดก่อน แล้วค่อยสร้างใหม่
-         const cleanExpenses = expenses.filter(exp => exp.installmentGroupId !== installmentGroupId || exp.id === editingExpense.id);
-         
-         const totalMonths = parseInt(formData.installmentMonths);
-         const startInstallment = parseInt(formData.currentInstallment);
-         let [startYear, startMonth] = formData.month.split('-').map(Number);
-         
-         generatedExpenses.push(finalData); // เอาบิลเดือนนี้ใส่ไว้ก่อน
-         
-         for (let i = startInstallment + 1; i <= totalMonths; i++) {
-           const monthOffset = i - startInstallment;
-           let targetMonth = startMonth + monthOffset;
-           let targetYear = startYear;
-
-           while (targetMonth > 12) {
-             targetMonth -= 12;
-             targetYear += 1;
-           }
-
-           const formattedMonth = `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
-           
-           let futureSplitDetails = {};
-           if (finalData.payerType === 'split') {
-             Object.keys(finalData.splitDetails).forEach(mId => {
-               futureSplitDetails[mId] = {
-                 amount: finalData.splitDetails[mId].amount,
-                 paid: false // บิลเดือนหน้าให้รอชำระเสมอ
-               };
-             });
-           }
-
-           generatedExpenses.push({
-             ...finalData,
-             id: installmentGroupId + "-" + i, // สร้าง ID แบบจัดกลุ่ม
-             month: formattedMonth,
-             currentInstallment: i,
-             status: 'pending', 
-             splitDetails: finalData.payerType === 'split' ? futureSplitDetails : undefined,
-             createdAt: finalData.createdAt + i // ให้เรียงลำดับถูก
-           });
-         }
-         
-         // แทนที่บิลเดิมด้วยบิลใหม่ (ที่รวมล่วงหน้าแล้ว)
-         newExpenses = [...generatedExpenses, ...cleanExpenses.filter(e => e.id !== editingExpense.id)];
-         showToast(`อัปเดตรายการผ่อนชำระเรียบร้อย`);
-         deductedAmountFromCentral = amount / finalData.installmentMonths;
-         
+      if (formData.payerType === 'split') {
+        const selectedMembers = Object.keys(splitSelection).filter(k => splitSelection[k]);
+        if (selectedMembers.length === 0) return window.alert("กรุณาเลือกคนที่ต้องหารอย่างน้อย 1 คน");
+        const amountPerPerson = amount / selectedMembers.length;
+        const splitData = {};
+        selectedMembers.forEach(mId => {
+          splitData[mId] = { amount: amountPerPerson, paid: editingExpense?.splitDetails?.[mId]?.paid || false };
+        });
+        finalData.splitDetails = splitData;
+        finalData.status = Object.values(splitData).every(v => v.paid) ? 'paid' : 'pending';
+        delete finalData.payerId;
       } else {
-         // ถ้าแก้เป็นบิลปกติ ไม่ผ่อนชำระ
-         newExpenses = expenses.map(exp => exp.id === editingExpense.id ? finalData : exp);
-         showToast("อัปเดตรายการเรียบร้อย");
-         deductedAmountFromCentral = amount;
+        finalData.status = editingExpense ? editingExpense.status : 'pending';
+        delete finalData.splitDetails;
       }
-
-    } else {
-      // --- เพิ่มบิลใหม่ ---
-      if (formData.paymentType === 'installment') {
-        const totalMonths = parseInt(formData.installmentMonths);
-        const startInstallment = parseInt(formData.currentInstallment);
-        let [startYear, startMonth] = formData.month.split('-').map(Number);
-
-        for (let i = startInstallment; i <= totalMonths; i++) {
-          const monthOffset = i - startInstallment;
-          let targetMonth = startMonth + monthOffset;
-          let targetYear = startYear;
-
-          while (targetMonth > 12) {
-            targetMonth -= 12;
-            targetYear += 1;
-          }
-
-          const formattedMonth = `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
-
-          let futureSplitDetails = {};
-          if (finalData.payerType === 'split') {
-            Object.keys(finalData.splitDetails).forEach(mId => {
-              futureSplitDetails[mId] = {
-                amount: finalData.splitDetails[mId].amount,
-                paid: i === startInstallment ? finalData.splitDetails[mId].paid : false
-              };
-            });
-          }
-
-          generatedExpenses.push({
-            ...finalData,
-            id: i === startInstallment ? installmentGroupId : installmentGroupId + "-" + i,
-            month: formattedMonth,
-            currentInstallment: i,
-            status: i === startInstallment ? finalData.status : 'pending',
-            splitDetails: finalData.payerType === 'split' ? futureSplitDetails : undefined,
-            createdAt: Date.now() + i
-          });
-        }
-        newExpenses = [...generatedExpenses, ...expenses];
-        showToast(`เพิ่มรายการ และสร้างบิลล่วงหน้า ${generatedExpenses.length} งวดเรียบร้อย`);
-        deductedAmountFromCentral = amount / finalData.installmentMonths; 
-      } else {
-        finalData.id = Date.now().toString();
-        finalData.createdAt = Date.now();
-        newExpenses = [finalData, ...expenses];
-        showToast("เพิ่มรายการเรียบร้อย");
-        deductedAmountFromCentral = amount;
-      }
-      sendLineNotify(`มีการเพิ่มบิลใหม่: ${formData.title} ยอด ${formatCurrency(amount)}`);
+      
+      finalData.id = editingExpense ? editingExpense.id : Date.now().toString();
+      finalData.createdAt = editingExpense ? editingExpense.createdAt : Date.now();
+      generatedExpenses.push(finalData);
     }
 
-    // --- จัดการหัก/คืน เงินกองกลางอัตโนมัติ ---
+    const newExpenses = [...generatedExpenses, ...cleanExpenses];
+    showToast(editingExpense ? "อัปเดตรายการเรียบร้อย" : "เพิ่มรายการเรียบร้อย");
+
     const newSourceObj = sources.find(s => s.id === formData.sourceId);
     const isNewSourceCentralFund = newSourceObj && newSourceObj.name.includes('กองกลาง');
-
     let oldAmountDeducted = 0;
     if (editingExpense) {
       const oldSourceObj = sources.find(s => s.id === editingExpense.sourceId);
-      const isOldSourceCentralFund = oldSourceObj && oldSourceObj.name.includes('กองกลาง');
-      if (isOldSourceCentralFund) {
-        oldAmountDeducted = editingExpense.paymentType === 'installment' && editingExpense.installmentMonths 
-            ? editingExpense.totalAmount / editingExpense.installmentMonths 
-            : editingExpense.totalAmount;
+      if (oldSourceObj && oldSourceObj.name.includes('กองกลาง')) {
+        oldAmountDeducted = editingExpense.totalAmount; 
       }
     }
-
     let newAmountDeducted = 0;
     if (isNewSourceCentralFund) {
-      newAmountDeducted = deductedAmountFromCentral;
+      newAmountDeducted = generatedExpenses[0].totalAmount; 
     }
 
     const netDeduction = newAmountDeducted - oldAmountDeducted;
@@ -320,11 +284,7 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
         source: `บิล: ${formData.title} ${editingExpense ? '(อัปเดต)' : ''}`,
         date: new Date().toISOString()
       };
-
-      newSavings = {
-        currentAmount: newTotal,
-        transactions: [newTransaction, ...savings.transactions].slice(0, 50)
-      };
+      newSavings = { currentAmount: newTotal, transactions: [newTransaction, ...savings.transactions].slice(0, 50) };
     }
 
     updateDB({ expenses: newExpenses, savings: newSavings });
@@ -346,12 +306,19 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
           
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={`block text-sm font-semibold ${theme.textMuted} mb-1.5`}>เดือนประจำรอบ (แรกเริ่ม)</label>
+              <label className={`block text-sm font-semibold ${theme.textMuted} mb-1.5`}>
+                 {formData.paymentType === 'installment' ? 'เดือนที่เริ่มผ่อนงวดแรก' : 'เดือนประจำรอบ'}
+              </label>
               <input type="month" required value={formData.month} onChange={e=>setFormData({...formData, month: e.target.value})} className={theme.input} />
             </div>
             <div>
               <label className={`block text-sm font-semibold ${theme.textMuted} mb-1.5`}>ยอดรวมเต็มบิล (บาท)</label>
-              <input type="number" required value={formData.totalAmount} onChange={e=>setFormData({...formData, totalAmount: e.target.value})} className={theme.input} placeholder="0.00" />
+              <input type="number" required 
+                value={editingExpense && editingExpense.paymentType === 'installment' && formData.totalAmount === editingExpense.totalAmount 
+                  ? editingExpense.totalAmount * editingExpense.installmentMonths 
+                  : formData.totalAmount} 
+                onChange={e=>setFormData({...formData, totalAmount: e.target.value})} className={theme.input} placeholder="0.00" 
+              />
             </div>
           </div>
 
@@ -387,24 +354,23 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
             
             {formData.paymentType === 'installment' && (
               <div className="animate-fadeIn">
-                <div className="grid grid-cols-2 gap-4">
-                   <div>
-                      <label className={`block text-sm font-semibold ${theme.textMuted} mb-1.5`}>ชำระงวดที่</label>
-                      <input type="number" required min="1" max={formData.installmentMonths || ""} value={formData.currentInstallment || 1} onChange={e=>setFormData({...formData, currentInstallment: e.target.value})} className={theme.input} />
-                   </div>
-                   <div>
-                      <label className={`block text-sm font-semibold ${theme.textMuted} mb-1.5`}>จากทั้งหมด (งวด)</label>
-                      <input type="number" required min="2" value={formData.installmentMonths} onChange={e=>setFormData({...formData, installmentMonths: e.target.value})} className={theme.input} />
-                   </div>
-                </div>
+                <label className={`block text-sm font-semibold ${theme.textMuted} mb-1.5`}>แบ่งชำระกี่งวด (เดือน)</label>
+                <input type="number" required min="2" value={formData.installmentMonths} onChange={e=>setFormData({...formData, installmentMonths: e.target.value})} className={theme.input} />
+                
                 {formData.totalAmount && formData.installmentMonths && (
                   <div className="mt-3">
                     <p className="text-sm text-blue-600 font-medium bg-blue-50 p-2.5 rounded-lg border border-blue-100 flex items-center justify-between">
-                      <span>เฉลี่ยชำระต่อเดือน:</span>
-                      <span className="font-black text-lg">{formatCurrency(formData.totalAmount / formData.installmentMonths)}</span>
+                      <span>ยอดชำระต่อเดือน:</span>
+                      <span className="font-black text-lg">
+                        {formatCurrency(
+                           (editingExpense && editingExpense.paymentType === 'installment' && formData.totalAmount === editingExpense.totalAmount 
+                            ? (editingExpense.totalAmount * editingExpense.installmentMonths) 
+                            : parseFloat(formData.totalAmount)) / parseInt(formData.installmentMonths)
+                        )}
+                      </span>
                     </p>
                     <p className="text-xs text-amber-600 mt-2 flex items-center bg-amber-50 p-2 rounded-lg">
-                      <Zap size={14} className="mr-1 shrink-0"/> ระบบจะสร้าง(หรือแก้ไข)บิลสำหรับงวดล่วงหน้าให้อัตโนมัติหลังกดบันทึก
+                      <Zap size={14} className="mr-1 shrink-0"/> ระบบจะสร้างบิลให้ทุกงวดล่วงหน้าอัตโนมัติ
                     </p>
                   </div>
                 )}
@@ -448,19 +414,6 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
                     </label>
                   ))}
                 </div>
-                {formData.totalAmount && Object.values(splitSelection).filter(Boolean).length > 0 && (
-                  <div className="mt-4 p-4 bg-white border border-blue-100 rounded-xl text-center shadow-sm">
-                    <p className={`text-xs font-semibold ${theme.textMuted} uppercase tracking-wide`}>
-                      ยอดแชร์ต่อคน {formData.paymentType === 'installment' ? '(ต่อเดือน)' : ''}
-                    </p>
-                    <p className="text-2xl font-bold text-blue-800 mt-1">
-                      {formatCurrency(
-                        (formData.totalAmount / (formData.paymentType === 'installment' && formData.installmentMonths ? parseInt(formData.installmentMonths) || 1 : 1)) / 
-                        Object.values(splitSelection).filter(Boolean).length
-                      )}
-                    </p>
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -475,108 +428,164 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
   );
 };
 
+// --- Component: Email Notification Modal ---
+const EmailNotifyModal = ({ expenses, members, setIsOpen, showToast }) => {
+  const [selectedMember, setSelectedMember] = useState('');
+  const [isSending, setIsSending] = useState(false);
+
+  const pendingExpenses = selectedMember ? expenses.filter(exp => {
+    if (exp.payerType === 'single' && exp.payerId === selectedMember && exp.status !== 'paid') return true;
+    if (exp.payerType === 'split' && exp.splitDetails[selectedMember] && !exp.splitDetails[selectedMember].paid) return true;
+    return false;
+  }) : [];
+
+  let totalPending = 0;
+  pendingExpenses.forEach(exp => {
+    totalPending += (exp.payerType === 'single') ? exp.totalAmount : exp.splitDetails[selectedMember].amount;
+  });
+
+  const handleSendEmail = async () => {
+    const memberObj = members.find(m => m.id === selectedMember);
+    if (!memberObj || !memberObj.email) {
+      return window.alert("กรุณาระบุอีเมลให้สมาชิกคนนี้ในหน้าตั้งค่าก่อนครับ");
+    }
+
+    setIsSending(true);
+    let bodyText = `สวัสดีคุณ ${memberObj.name},\n\nนี่คือสรุปยอดค่าใช้จ่ายที่คุณต้องชำระ\nยอดรวมทั้งสิ้น: ${formatCurrency(totalPending)}\n\nรายละเอียดบิลค้างชำระ:\n`;
+    
+    pendingExpenses.forEach((exp, idx) => {
+      const amount = exp.payerType === 'single' ? exp.totalAmount : exp.splitDetails[selectedMember].amount;
+      bodyText += `${idx+1}. ${exp.title} (${exp.month}) - ${formatCurrency(amount)}\n`;
+    });
+    
+    bodyText += `\nขอบคุณที่ใช้บริการ Money-Pop Family`;
+
+    try {
+      await fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'sendEmail',
+          email: memberObj.email,
+          subject: `แจ้งเตือนยอดค่าใช้จ่ายของคุณ: ${formatCurrency(totalPending)}`,
+          body: bodyText
+        })
+      });
+      showToast("ส่งอีเมลแจ้งเตือนสำเร็จ!");
+      setIsOpen(false);
+    } catch(e) {
+      console.error(e);
+      window.alert("เกิดข้อผิดพลาดในการส่งอีเมล กรุณาตรวจสอบ URL ของ Google Sheets");
+    }
+    setIsSending(false);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+      <div className={`bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl animate-slideUp`}>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className={`text-xl font-bold flex items-center ${theme.primary}`}><Mail size={22} className="mr-2"/> แจ้งเตือนทางอีเมล</h3>
+          <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
+        </div>
+        
+        <label className={`block text-sm font-semibold ${theme.textMuted} mb-2`}>เลือกสมาชิกที่จะส่งแจ้งเตือน</label>
+        <select value={selectedMember} onChange={e=>setSelectedMember(e.target.value)} className={`${theme.input} mb-4`}>
+          <option value="">เลือกสมาชิก...</option>
+          {members.map(m => <option key={m.id} value={m.id}>{m.name} {m.email ? `(${m.email})` : '(ไม่มีอีเมล)'}</option>)}
+        </select>
+
+        {selectedMember && (
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-6">
+             <p className="text-sm text-slate-500 mb-1">ยอดค้างชำระรวม</p>
+             <p className="text-3xl font-black text-rose-600 mb-3">{formatCurrency(totalPending)}</p>
+             <div className="max-h-32 overflow-y-auto text-xs text-slate-600 space-y-1">
+               {pendingExpenses.map(exp => (
+                 <div key={exp.id} className="flex justify-between border-b border-slate-200 pb-1">
+                   <span className="truncate pr-2">{exp.title} ({exp.month})</span>
+                   <span className="font-bold">{formatCurrency(exp.payerType === 'single' ? exp.totalAmount : exp.splitDetails[selectedMember].amount)}</span>
+                 </div>
+               ))}
+               {pendingExpenses.length === 0 && <span>ไม่มีบิลค้างชำระ</span>}
+             </div>
+          </div>
+        )}
+
+        <button 
+          onClick={handleSendEmail} 
+          disabled={!selectedMember || pendingExpenses.length === 0 || isSending}
+          className={`w-full py-3 rounded-xl font-bold flex items-center justify-center transition-all ${!selectedMember || pendingExpenses.length === 0 ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : theme.button}`}
+        >
+          {isSending ? <RefreshCw className="animate-spin mr-2" size={18}/> : <Send size={18} className="mr-2"/>}
+          {isSending ? 'กำลังส่ง...' : 'ส่งอีเมลสรุปยอด'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  
-  // Database State รวมทุกอย่างไว้ในที่เดียวเพื่อให้ส่งไปคลาวด์ง่ายๆ
-  const [dbData, setDbData] = useState({
-    expenses: [], members: [], categories: [], sources: [], savings: { currentAmount: 0, transactions: [] }
-  });
-  
+  const [dbData, setDbData] = useState({ expenses: [], members: [], categories: [], sources: [], savings: { currentAmount: 0, transactions: [] } });
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // ฟังก์ชันดึงข้อมูลจาก Google Sheets (หรือ Local Storage ถ้าลืมใส่ URL)
   const fetchData = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true);
-    
-    // ตรวจสอบว่าใส่ URL หรือยัง
     if (!GAS_URL || GAS_URL.includes("ใส่_URL")) {
       const local = localStorage.getItem("moneyPopDB_Sheets");
       if (local) setDbData(JSON.parse(local));
       if (!silent) setIsLoading(false);
       return;
     }
-
     try {
       if(!silent) setIsSyncing(true);
       const res = await fetch(GAS_URL);
       const data = await res.json();
       if (data && data.expenses) {
         setDbData(data);
-        localStorage.setItem("moneyPopDB_Sheets", JSON.stringify(data)); // สำรองไว้ในเครื่องด้วย
+        localStorage.setItem("moneyPopDB_Sheets", JSON.stringify(data)); 
       }
     } catch (e) {
       console.error("Fetch error:", e);
-      // ถ้าเน็ตหลุด ดึงจาก Local Storage แทน
       const local = localStorage.getItem("moneyPopDB_Sheets");
       if (local) setDbData(JSON.parse(local));
     }
-    
     if (!silent) setIsLoading(false);
     setIsSyncing(false);
   }, []);
 
-  // ดึงข้อมูลครั้งแรกเมื่อโหลดแอป
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
-  // ฟังก์ชันอัปเดตข้อมูล (บันทึกลง Local และส่งไปคลาวด์ Google Sheets)
   const updateDB = async (newDataFields) => {
     const updatedData = { ...dbData, ...newDataFields };
-    setDbData(updatedData); // อัปเดตหน้าจอทันที ไม่ต้องรอคลาวด์
-    localStorage.setItem("moneyPopDB_Sheets", JSON.stringify(updatedData)); // เซฟลงเครื่อง
-
+    setDbData(updatedData); 
+    localStorage.setItem("moneyPopDB_Sheets", JSON.stringify(updatedData)); 
     if (!GAS_URL || GAS_URL.includes("ใส่_URL")) return;
-
     setIsSyncing(true);
     try {
       await fetch(GAS_URL, {
         method: 'POST',
         body: JSON.stringify(updatedData),
-        // สำคัญมาก: ใช้ text/plain เพื่อป้องกันปัญหา CORS Policy ของ Google Apps Script
         headers: { 'Content-Type': 'text/plain;charset=utf-8' }
       });
-    } catch (e) {
-      console.error("Save to cloud error:", e);
-    }
+    } catch (e) { console.error("Save to cloud error:", e); }
     setIsSyncing(false);
   };
 
   const { expenses, members, categories, sources, savings } = dbData;
 
-  const [filters, setFilters] = useState({
-    month: new Date().toISOString().slice(0, 7),
-    payer: '',
-    category: '',
-    source: '',
-    paymentType: ''
-  });
-
+  const [filters, setFilters] = useState({ month: new Date().toISOString().slice(0, 7), payer: '', category: '', source: '', paymentType: '' });
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
-  
   const [selectedForPay, setSelectedForPay] = useState({});
   const [splitSelectModal, setSplitSelectModal] = useState({ isOpen: false, expId: null, members: [] });
-
   const [savingsAmount, setSavingsAmount] = useState('');
   const [savingsSource, setSavingsSource] = useState('');
   const [savingsType, setSavingsType] = useState('add');
 
-  const sendLineMessage = async (message) => {
-    const gasUrl = "ใส่_WEB_APP_URL_จาก_GOOGLE_APPS_SCRIPT_ที่นี่"; 
-    if (gasUrl === "ใส่_WEB_APP_URL_จาก_GOOGLE_APPS_SCRIPT_ที่นี่" || !gasUrl) return;
-    try {
-      await fetch(gasUrl, { method: 'POST', body: JSON.stringify({ message: message }) });
-    } catch (error) { console.error("LINE API Error:", error); }
-  };
-
-  const showToast = (msg) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 3000);
-  };
+  const showToast = (msg) => { setToastMessage(msg); setTimeout(() => setToastMessage(''), 3000); };
 
   const filteredExpenses = useMemo(() => {
     return expenses.filter(exp => {
@@ -584,7 +593,6 @@ export default function App() {
       if (filters.category && exp.categoryId !== filters.category) return false;
       if (filters.source && exp.sourceId !== filters.source) return false;
       if (filters.paymentType && exp.paymentType !== filters.paymentType) return false;
-      
       if (filters.payer) {
         if (exp.payerType === 'single' && exp.payerId !== filters.payer) return false;
         if (exp.payerType === 'split' && (!exp.splitDetails || !exp.splitDetails[filters.payer])) return false;
@@ -599,648 +607,82 @@ export default function App() {
       delete newSelected[expense.id];
       setSelectedForPay(newSelected);
     } else {
-      const monthlyDivisor = (expense.paymentType === 'installment' && expense.installmentMonths) ? expense.installmentMonths : 1;
-      
       if (expense.payerType === 'single') {
-        setSelectedForPay({ ...selectedForPay, [expense.id]: { amount: expense.totalAmount / monthlyDivisor, type: 'single' } });
+        setSelectedForPay({ ...selectedForPay, [expense.id]: { amount: expense.totalAmount, type: 'single' } });
       } else {
         const unpaidMembers = Object.keys(expense.splitDetails).filter(mId => !expense.splitDetails[mId].paid);
         if (unpaidMembers.length === 0) return; 
-
-        setSplitSelectModal({
-          isOpen: true,
-          expId: expense.id,
-          expenseData: expense,
-          selectedMembers: unpaidMembers.length === 1 ? unpaidMembers : [], 
-          availableMembers: unpaidMembers
-        });
+        setSplitSelectModal({ isOpen: true, expId: expense.id, expenseData: expense, selectedMembers: unpaidMembers.length === 1 ? unpaidMembers : [], availableMembers: unpaidMembers });
       }
     }
   };
 
   const confirmSplitSelection = () => {
     const { expId, selectedMembers, expenseData } = splitSelectModal;
-    if (selectedMembers.length === 0) {
-       setSplitSelectModal({ isOpen: false, expId: null, members: [] });
-       return;
-    }
-
+    if (selectedMembers.length === 0) { setSplitSelectModal({ isOpen: false, expId: null, members: [] }); return; }
     let amountToPay = 0;
-    const monthlyDivisor = (expenseData.paymentType === 'installment' && expenseData.installmentMonths) ? expenseData.installmentMonths : 1;
-
-    selectedMembers.forEach(mId => {
-      amountToPay += (expenseData.splitDetails[mId].amount / monthlyDivisor);
-    });
-
-    setSelectedForPay({
-      ...selectedForPay,
-      [expId]: { amount: amountToPay, type: 'split', memberIds: selectedMembers }
-    });
+    selectedMembers.forEach(mId => { amountToPay += expenseData.splitDetails[mId].amount; });
+    setSelectedForPay({ ...selectedForPay, [expId]: { amount: amountToPay, type: 'split', memberIds: selectedMembers } });
     setSplitSelectModal({ isOpen: false, expId: null, members: [] });
   };
 
   const processBulkPayment = () => {
     let totalPaid = 0;
-    
     const newExpenses = expenses.map(expense => {
       if (!selectedForPay[expense.id]) return expense; 
-
       const payData = selectedForPay[expense.id];
       const newExpense = { ...expense };
-      const monthlyDivisor = (newExpense.paymentType === 'installment' && newExpense.installmentMonths) ? newExpense.installmentMonths : 1;
-
       if (payData.type === 'single') {
         newExpense.status = 'paid';
-        totalPaid += (newExpense.totalAmount / monthlyDivisor);
+        totalPaid += newExpense.totalAmount;
       } else if (payData.type === 'split') {
         const newSplitDetails = { ...newExpense.splitDetails };
         payData.memberIds.forEach(mId => {
           newSplitDetails[mId].paid = true;
-          totalPaid += (newSplitDetails[mId].amount / monthlyDivisor);
+          totalPaid += newSplitDetails[mId].amount;
         });
-        
         const allPaid = Object.values(newSplitDetails).every(v => v.paid);
         newExpense.splitDetails = newSplitDetails;
         newExpense.status = allPaid ? 'paid' : 'pending';
       }
       return newExpense;
     });
-
     updateDB({ expenses: newExpenses });
     setSelectedForPay({});
     showToast(`ชำระเรียบร้อย ยอดรวม ${formatCurrency(totalPaid)}`);
-    sendLineMessage(`💸 ชำระรายการเรียบร้อย\nยอดรวม: ${formatCurrency(totalPaid)}`);
   };
 
-  const deleteExpense = (id) => {
-    // แจ้งเตือนเพื่อให้ผู้ใช้ทราบว่า หากลบบิลนี้ไปแล้ว บิลในงวดอื่นๆ (ถ้ามี) จะยังอยู่ ต้องตามไปลบเอง
-    if(window.confirm("ยืนยันการลบรายการนี้? (ระบบจะลบเฉพาะรายการของเดือนนี้เท่านั้น)")) {
+  const deleteExpenseGroup = (groupId) => {
+    if(window.confirm("คุณต้องการลบบิลผ่อนชำระล่วงหน้าทั้งหมดในชุดนี้ด้วยหรือไม่?\n\n- กด OK เพื่อลบทั้งหมด\n- กด Cancel เพื่อลบเฉพาะเดือนนี้")) {
+       updateDB({ expenses: expenses.filter(e => e.groupId !== groupId) });
+       showToast("ลบชุดรายการผ่อนชำระเรียบร้อย");
+    } else {
+       updateDB({ expenses: expenses.filter(e => e.id !== groupId) });
+       showToast("ลบรายการสำเร็จ");
+    }
+  }
+
+  const deleteExpense = (id, groupId) => {
+    if (groupId) { deleteExpenseGroup(groupId); return; }
+    if(window.confirm("ยืนยันการลบรายการนี้?")) {
       const exp = expenses.find(e => e.id === id);
       const newExpenses = expenses.filter(e => e.id !== id);
       let newSavings = savings;
-      
       if (exp) {
         const sourceObj = sources.find(s => s.id === exp.sourceId);
         if (sourceObj && sourceObj.name.includes('กองกลาง')) {
-          const monthlyDivisor = (exp.paymentType === 'installment' && exp.installmentMonths) ? exp.installmentMonths : 1;
-          const returnedAmount = exp.totalAmount / monthlyDivisor;
-          
           newSavings = {
-            currentAmount: savings.currentAmount + returnedAmount,
-            transactions: [{
-              id: Date.now().toString(),
-              type: 'add',
-              amount: returnedAmount,
-              source: `คืนเงิน (ลบบิล: ${exp.title})`,
-              date: new Date().toISOString()
-            }, ...savings.transactions].slice(0, 50)
+            currentAmount: savings.currentAmount + exp.totalAmount,
+            transactions: [{ id: Date.now().toString(), type: 'add', amount: exp.totalAmount, source: `คืนเงิน (ลบบิล: ${exp.title})`, date: new Date().toISOString() }, ...savings.transactions].slice(0, 50)
           };
         }
       }
-
       updateDB({ expenses: newExpenses, savings: newSavings });
       showToast("ลบรายการสำเร็จ");
     }
   };
 
   const selectedTotalAmount = Object.values(selectedForPay).reduce((sum, item) => sum + item.amount, 0);
-
-  const renderNavigation = () => (
-    <nav className="bg-white border-t border-slate-200 pb-safe pt-2 px-4 sticky bottom-0 z-40 sm:top-0 sm:bottom-auto sm:border-b sm:border-t-0 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
-      <div className="flex space-x-2 w-full justify-around max-w-lg mx-auto sm:max-w-none sm:justify-start">
-        {[
-          { id: 'dashboard', icon: <Home size={22}/>, label: 'ภาพรวม' },
-          { id: 'expenses', icon: <CreditCard size={22}/>, label: 'บิล' },
-          { id: 'savings', icon: <PiggyBank size={22}/>, label: 'กองกลาง' },
-          { id: 'settings', icon: <Settings size={22}/>, label: 'ตั้งค่า' }
-        ].map(item => {
-          const isActive = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`flex flex-col items-center justify-center w-16 h-14 sm:flex-row sm:w-auto sm:px-6 sm:py-2 sm:rounded-xl transition-colors duration-200 ${
-                isActive 
-                  ? 'text-blue-800 sm:bg-blue-50 sm:text-blue-800' 
-                  : 'text-slate-400 hover:text-slate-600'
-              }`}
-            >
-              <div className={`mb-1 sm:mb-0 sm:mr-2 ${isActive ? 'scale-110 transition-transform' : ''}`}>
-                {item.icon}
-              </div>
-              <span className={`text-[10px] sm:text-sm font-semibold tracking-wide ${isActive ? 'opacity-100' : 'opacity-80'}`}>{item.label}</span>
-            </button>
-          )
-        })}
-      </div>
-    </nav>
-  );
-
-  const renderFilters = () => (
-    <div className="bg-white px-4 py-3 sm:rounded-2xl border-b sm:border border-slate-200 mb-4 sm:mb-6 flex overflow-x-auto custom-scrollbar gap-3 hide-scrollbar snap-x">
-      <div className="flex items-center space-x-2 text-slate-700 font-bold shrink-0 snap-start pl-2">
-        <Filter size={18} />
-      </div>
-      <div className="shrink-0 snap-start">
-        <input 
-          type="month" 
-          value={filters.month} 
-          onChange={e => setFilters({...filters, month: e.target.value})}
-          className="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-blue-100 outline-none"
-        />
-      </div>
-      <div className="shrink-0 snap-start">
-        <select value={filters.payer} onChange={e => setFilters({...filters, payer: e.target.value})} className="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-2 text-sm font-medium outline-none">
-          <option value="">👤 ทุกคน</option>
-          {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-        </select>
-      </div>
-      <div className="shrink-0 snap-start">
-        <select value={filters.category} onChange={e => setFilters({...filters, category: e.target.value})} className="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-2 text-sm font-medium outline-none">
-          <option value="">📁 ทุกหมวด</option>
-          {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-      </div>
-      <div className="shrink-0 snap-start pr-4 sm:pr-0">
-        <select value={filters.source} onChange={e => setFilters({...filters, source: e.target.value})} className="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-2 text-sm font-medium outline-none">
-          <option value="">💳 ทุกบัญชี</option>
-          {sources.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
-      </div>
-    </div>
-  );
-
-  const renderDashboard = () => {
-    let totalPaid = 0;
-    let totalPending = 0;
-    const categoryDataMap = {};
-    const memberDataMap = {};
-
-    filteredExpenses.forEach(exp => {
-      const catName = categories.find(c => c.id === exp.categoryId)?.name || 'ไม่ระบุ';
-      
-      // หาตัวหาร (ถ้าจ่ายเต็ม หารด้วย 1, ถ้าผ่อน ให้หารด้วยจำนวนเดือน เพื่อหายอดต่อเดือน)
-      const monthlyDivisor = (exp.paymentType === 'installment' && exp.installmentMonths) ? exp.installmentMonths : 1;
-
-      let amountConsidered = 0;
-      let isPaidConsidered = false;
-
-      if (exp.payerType === 'single') {
-        amountConsidered = exp.totalAmount / monthlyDivisor;
-        isPaidConsidered = exp.status === 'paid';
-      } else {
-        if (filters.payer) {
-          amountConsidered = exp.splitDetails[filters.payer].amount / monthlyDivisor;
-          isPaidConsidered = exp.splitDetails[filters.payer].paid;
-        } else {
-          amountConsidered = exp.totalAmount / monthlyDivisor;
-          let localPaid = 0;
-          let localPending = 0;
-          Object.values(exp.splitDetails).forEach(v => {
-            if(v.paid) localPaid += (v.amount / monthlyDivisor);
-            else localPending += (v.amount / monthlyDivisor);
-          });
-          totalPaid += localPaid;
-          totalPending += localPending;
-          
-          if (!categoryDataMap[catName]) categoryDataMap[catName] = 0;
-          categoryDataMap[catName] += amountConsidered;
-          return; 
-        }
-      }
-
-      if (isPaidConsidered) totalPaid += amountConsidered;
-      else totalPending += amountConsidered;
-
-      if (!categoryDataMap[catName]) categoryDataMap[catName] = 0;
-      categoryDataMap[catName] += amountConsidered;
-
-      if (!filters.payer) {
-        if (exp.payerType === 'single') {
-          const mName = members.find(m => m.id === exp.payerId)?.name || 'ไม่ระบุ';
-          if (!memberDataMap[mName]) memberDataMap[mName] = 0;
-          memberDataMap[mName] += (exp.totalAmount / monthlyDivisor);
-        } else {
-          Object.entries(exp.splitDetails).forEach(([mId, details]) => {
-            const mName = members.find(m => m.id === mId)?.name || 'ไม่ระบุ';
-            if (!memberDataMap[mName]) memberDataMap[mName] = 0;
-            memberDataMap[mName] += (details.amount / monthlyDivisor);
-          });
-        }
-      }
-    });
-
-    const pieData = [
-      { name: 'ชำระแล้ว', value: totalPaid, color: '#3b82f6' }, 
-      { name: 'รอชำระ', value: totalPending, color: '#f43f5e' } 
-    ];
-
-    const catData = Object.keys(categoryDataMap).map(k => ({ name: k, value: categoryDataMap[k] }));
-    const memData = Object.keys(memberDataMap).map(k => ({ name: k, value: memberDataMap[k] }));
-    const grandTotal = totalPaid + totalPending;
-
-    return (
-      <div className="space-y-4 sm:space-y-5 animate-fadeIn pb-6">
-        {renderFilters()}
-
-        <div className="px-4 sm:px-0 flex flex-col gap-4 sm:gap-5">
-          <div className={`${theme.card} p-5 sm:p-6 bg-gradient-to-br from-blue-900 to-blue-800 text-white shadow-xl flex flex-col md:flex-row gap-5 sm:gap-6`}>
-            
-            <div className="w-full md:w-5/12 lg:w-1/2 flex flex-col justify-between">
-              <div className="mb-4 md:mb-0">
-                <p className="text-blue-200 text-sm font-medium mb-1">ยอดใช้จ่ายจริงเดือนนี้ (เฉลี่ยผ่อนชำระแล้ว)</p>
-                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight">{formatCurrency(grandTotal)}</h2>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-3 mt-auto">
-                <div className="bg-white/95 text-slate-800 p-3 sm:p-4 rounded-xl shadow-sm border-l-4 border-blue-500">
-                  <p className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-wide">ชำระแล้ว</p>
-                  <p className="text-base sm:text-lg lg:text-xl font-black text-blue-700 mt-1 truncate">{formatCurrency(totalPaid)}</p>
-                </div>
-                <div className="bg-white/95 text-slate-800 p-3 sm:p-4 rounded-xl shadow-sm border-l-4 border-rose-500">
-                  <p className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-wide">รอชำระ</p>
-                  <p className="text-base sm:text-lg lg:text-xl font-black text-rose-600 mt-1 truncate">{formatCurrency(totalPending)}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="w-full md:w-7/12 lg:w-1/2 bg-white/10 rounded-2xl p-4 backdrop-blur-md border border-white/10 flex items-center justify-center min-h-[180px] sm:min-h-[220px]">
-              <ResponsiveContainer width="100%" height="100%" minHeight={180}>
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    innerRadius={55}
-                    outerRadius={80}
-                    paddingAngle={4}
-                    dataKey="value"
-                    stroke="none"
-                  >
-                    {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip 
-                    formatter={(value) => formatCurrency(value)}
-                    contentStyle={{ backgroundColor: '#ffffff', border: 'none', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', color: '#1e293b' }}
-                    itemStyle={{ color: '#1e293b', fontWeight: 'bold' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className={`grid grid-cols-1 ${!filters.payer ? 'md:grid-cols-2' : ''} gap-4 sm:gap-5`}>
-            
-            <div className={`${theme.card} p-4 sm:p-5 flex flex-col min-h-[260px] sm:min-h-[280px]`}>
-              <h3 className={`text-sm font-bold ${theme.primary} mb-4 flex items-center shrink-0`}><ShoppingBag size={16} className="mr-2"/> แยกตามหมวดหมู่</h3>
-              <div className="flex-1 min-h-[200px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={catData} layout="vertical" margin={{ top: 0, right: 0, left: 10, bottom: 0 }}>
-                    <XAxis type="number" hide />
-                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} fontSize={11} fill="#64748b" width={75} />
-                    <RechartsTooltip 
-                      cursor={{fill: '#f1f5f9'}}
-                      contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}
-                      formatter={(val) => formatCurrency(val)}
-                    />
-                    <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={20}>
-                      {catData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={theme.chartColors[index % theme.chartColors.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-            
-            {!filters.payer && (
-              <div className={`${theme.card} p-4 sm:p-5 flex flex-col min-h-[260px] sm:min-h-[280px]`}>
-                <h3 className={`text-sm font-bold ${theme.primary} mb-2 flex items-center shrink-0`}><Users size={16} className="mr-2"/> แยกตามบุคคล</h3>
-                <div className="flex-1 min-h-[200px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={memData} innerRadius={45} outerRadius={75} dataKey="value" stroke="#fff" strokeWidth={2}>
-                        {memData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={theme.chartColors[index % theme.chartColors.length]} />
-                        ))}
-                      </Pie>
-                      <RechartsTooltip 
-                        formatter={(val) => formatCurrency(val)}
-                        contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px' }}
-                      />
-                      <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderExpensesList = () => {
-    return (
-      <div className="space-y-4 animate-fadeIn pb-6">
-        <div className="px-4 sm:px-0 flex justify-between items-end mb-2 pt-2">
-          <div>
-            <h2 className={`text-2xl font-black ${theme.primary}`}>รายการบิล</h2>
-            <p className="text-slate-500 text-sm font-medium">{filteredExpenses.length} รายการในเดือนนี้</p>
-          </div>
-          <button 
-            onClick={() => { setEditingExpense(null); setIsModalOpen(true); }}
-            className={`${theme.button} px-4 py-2 sm:px-5 sm:py-2.5 rounded-full flex items-center space-x-1.5 shadow-blue-500/20`}
-          >
-            <Plus size={18} /> <span className="hidden sm:inline">เพิ่มรายการ</span>
-          </button>
-        </div>
-
-        {renderFilters()}
-
-        {Object.keys(selectedForPay).length > 0 && (
-          <div className="sticky top-2 z-40 mx-4 sm:mx-0 bg-white p-4 rounded-2xl border border-blue-200 shadow-[0_10px_25px_rgba(37,99,235,0.15)] flex justify-between items-center mb-4 animate-slideUp">
-            <div>
-              <span className="text-blue-600 text-xs font-bold uppercase tracking-wide">เลือก {Object.keys(selectedForPay).length} รายการ</span>
-              <p className="text-blue-900 text-xl font-black">{formatCurrency(selectedTotalAmount)}</p>
-            </div>
-            <button 
-              onClick={processBulkPayment}
-              className={`${theme.button} px-5 py-2.5 rounded-xl font-bold shadow-blue-600/30`}
-            >
-              ชำระเงิน
-            </button>
-          </div>
-        )}
-
-        <div className="px-4 sm:px-0 grid gap-3 sm:gap-4">
-          {filteredExpenses.map(exp => {
-            const cat = categories.find(c => c.id === exp.categoryId);
-            const source = sources.find(s => s.id === exp.sourceId);
-            
-            const monthlyDivisor = (exp.paymentType === 'installment' && exp.installmentMonths) ? exp.installmentMonths : 1;
-            let displayAmount = exp.totalAmount / monthlyDivisor;
-            let displayStatus = exp.status;
-            let isPartiallyPaid = false;
-
-            if (exp.payerType === 'split') {
-               if (filters.payer) {
-                 displayAmount = exp.splitDetails[filters.payer].amount / monthlyDivisor;
-                 displayStatus = exp.splitDetails[filters.payer].paid ? 'paid' : 'pending';
-               } else {
-                 const allPaid = Object.values(exp.splitDetails).every(v => v.paid);
-                 const somePaid = Object.values(exp.splitDetails).some(v => v.paid);
-                 if (somePaid && !allPaid) isPartiallyPaid = true;
-               }
-            }
-
-            const isChecked = !!selectedForPay[exp.id];
-            const showAsPaid = displayStatus === 'paid';
-
-            return (
-              <div 
-                key={exp.id} 
-                className={`${theme.card} p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between transition-all duration-200
-                  ${showAsPaid ? 'opacity-70 bg-slate-50 shadow-none border-dashed' : isChecked ? 'ring-2 ring-blue-500 border-transparent bg-blue-50/30' : 'hover:border-blue-200 hover:shadow-md'}`}
-              >
-                <div className="flex items-start sm:items-center w-full sm:w-auto">
-                  {!showAsPaid && (
-                    <div className="mr-3 sm:mr-4 mt-1 sm:mt-0">
-                      <input 
-                        type="checkbox" 
-                        checked={isChecked}
-                        onChange={() => handleCheckExpense(exp)}
-                        className="w-5 h-5 rounded-md border-slate-300 text-blue-600 focus:ring-blue-500 transition-colors"
-                      />
-                    </div>
-                  )}
-                  
-                  <div className={`p-3 rounded-2xl mr-3 sm:mr-4 flex-shrink-0 ${showAsPaid ? 'bg-slate-200 grayscale' : 'bg-slate-100 shadow-sm'}`}>
-                    {cat ? getIconForCategory(cat.name) : <CreditCard className="text-slate-400" />}
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-0.5">
-                      <h3 className={`font-bold text-base sm:text-lg truncate ${showAsPaid ? 'text-slate-400 line-through' : theme.textMain}`}>
-                        {exp.title}
-                      </h3>
-                      {exp.paymentType === 'installment' && (
-                        <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2.5 py-0.5 rounded-full font-bold">
-                          ผ่อนชำระ {exp.currentInstallment && exp.installmentMonths ? `(งวดที่ ${exp.currentInstallment}/${exp.installmentMonths})` : ''}
-                        </span>
-                      )}
-                    </div>
-                    
-                    <div className="flex flex-wrap text-xs text-slate-500 font-medium gap-x-2 gap-y-1 mt-1">
-                      <span className="bg-slate-100 px-2 py-0.5 rounded-md">{cat?.name || 'ไม่ระบุ'}</span>
-                      <span className="bg-slate-100 px-2 py-0.5 rounded-md text-slate-600">{source?.name || 'ไม่ระบุ'}</span>
-                      {exp.payerType === 'split' && !filters.payer && (
-                        <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded-md">หาร {Object.keys(exp.splitDetails).length} คน</span>
-                      )}
-                    </div>
-
-                    {exp.payerType === 'split' && !filters.payer && (
-                      <div className="mt-3 text-xs space-y-1.5 border-t border-slate-100 pt-2 w-full sm:max-w-xs">
-                        {Object.entries(exp.splitDetails).map(([mId, detail]) => {
-                          const m = members.find(mbr => mbr.id === mId);
-                          return (
-                            <div key={mId} className={`flex items-center justify-between ${detail.paid ? 'text-emerald-600 font-medium' : 'text-slate-500'}`}>
-                              <span className="truncate pr-2">• {m?.name}</span>
-                              <div className="flex items-center gap-2 shrink-0">
-                                <span>{formatCurrency(detail.amount / monthlyDivisor)}</span>
-                                {detail.paid ? <Check size={14} className="bg-emerald-100 rounded-full p-0.5"/> : <span className="text-[10px] bg-rose-50 text-rose-500 px-1.5 py-0.5 rounded font-bold">รอชำระ</span>}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="mt-4 sm:mt-0 w-full sm:w-auto flex sm:flex-col justify-between sm:justify-end items-center sm:items-end border-t border-slate-100 sm:border-0 pt-3 sm:pt-0">
-                  <div className={`text-lg sm:text-xl font-black flex items-baseline ${showAsPaid ? 'text-slate-400' : 'text-blue-800'}`}>
-                    {formatCurrency(displayAmount)}
-                    {exp.paymentType === 'installment' && <span className="text-sm font-medium text-slate-500 ml-1">/ด.</span>}
-                  </div>
-                  
-                  <div className="flex items-center space-x-1 sm:space-x-2 mt-1 sm:mt-2">
-                    {showAsPaid ? (
-                      <span className="text-emerald-700 text-xs font-bold flex items-center bg-emerald-100 px-2.5 py-1 rounded-full"><Check size={12} className="mr-1 stroke-[3]"/> ชำระแล้ว</span>
-                    ) : isPartiallyPaid ? (
-                      <span className="text-amber-700 text-xs font-bold bg-amber-100 px-2.5 py-1 rounded-full">ชำระบางส่วน</span>
-                    ) : (
-                      <span className="text-rose-600 text-xs font-bold bg-rose-50 px-2.5 py-1 rounded-full">รอชำระ</span>
-                    )}
-                    
-                    <button onClick={() => { setEditingExpense(exp); setIsModalOpen(true); }} className="p-1.5 sm:p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                      <Edit size={16} />
-                    </button>
-                    <button onClick={() => deleteExpense(exp.id)} className="p-1.5 sm:p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-          
-          {filteredExpenses.length === 0 && (
-             <div className="text-center p-12 text-slate-400 bg-white rounded-3xl border border-dashed border-slate-300 mx-4 sm:mx-0">
-               <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
-                 <ShoppingBag size={24} className="text-slate-300" />
-               </div>
-               <p className="font-medium">ไม่มีรายการบิลในเดือนนี้</p>
-               <p className="text-sm mt-1 text-slate-400">กดเพิ่มรายการเพื่อเริ่มต้น</p>
-             </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const renderSavings = () => {
-    const handleSaveFund = (e) => {
-      e.preventDefault();
-      if (!savingsAmount || isNaN(savingsAmount)) return;
-      
-      const val = parseFloat(savingsAmount);
-      const newTotal = savingsType === 'add' ? savings.currentAmount + val : savings.currentAmount - val;
-      
-      const newTransaction = {
-        id: Date.now().toString(),
-        type: savingsType,
-        amount: val,
-        source: savingsSource || 'ไม่ระบุ',
-        date: new Date().toISOString()
-      };
-
-      const newSavings = {
-        currentAmount: newTotal,
-        transactions: [newTransaction, ...savings.transactions].slice(0, 50) 
-      };
-
-      updateDB({ savings: newSavings });
-
-      const typeText = savingsType === 'add' ? 'รับเงินเข้ากองกลาง' : 'ใช้จ่ายจากกองกลาง';
-      sendLineMessage(`💰 ${typeText}\nยอดเงิน: ${formatCurrency(val)}\nรายการ: ${savingsSource || 'ไม่ระบุ'}\nยอดคงเหลือ: ${formatCurrency(newTotal)}`);
-
-      setSavingsAmount(''); setSavingsSource('');
-      showToast('บันทึกข้อมูลกองกลางเรียบร้อย');
-    };
-
-    return (
-      <div className="space-y-4 sm:space-y-6 animate-fadeIn pb-6 px-4 sm:px-0">
-        <div className={`${theme.card} p-8 text-center bg-gradient-to-br from-indigo-500 to-blue-600 text-white relative overflow-hidden shadow-lg`}>
-           <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white via-transparent to-transparent"></div>
-           <div className="bg-white/20 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-md shadow-inner">
-             <PiggyBank size={32} className="text-white" />
-           </div>
-           <h2 className="text-blue-100 text-sm font-medium uppercase tracking-widest mb-1">ยอดเงินกองกลางคงเหลือ</h2>
-           <p className="text-4xl sm:text-5xl font-black drop-shadow-md">{formatCurrency(savings.currentAmount)}</p>
-        </div>
-
-        <div className={`${theme.card} p-6`}>
-          <h3 className={`font-bold ${theme.primary} mb-4 flex items-center`}><Edit size={18} className="mr-2"/> บันทึกรายการ</h3>
-          <form onSubmit={handleSaveFund} className="flex flex-col gap-4">
-            <div className="flex bg-slate-100 p-1 rounded-xl">
-              <label className={`flex-1 text-center py-2 rounded-lg cursor-pointer text-sm font-bold transition-colors ${savingsType === 'add' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-500 hover:text-slate-700'}`}>
-                <input type="radio" name="savType" value="add" checked={savingsType === 'add'} onChange={()=>setSavingsType('add')} className="hidden" /> รับเงินเข้า (+)
-              </label>
-              <label className={`flex-1 text-center py-2 rounded-lg cursor-pointer text-sm font-bold transition-colors ${savingsType === 'deduct' ? 'bg-white shadow-sm text-rose-600' : 'text-slate-500 hover:text-slate-700'}`}>
-                <input type="radio" name="savType" value="deduct" checked={savingsType === 'deduct'} onChange={()=>setSavingsType('deduct')} className="hidden" /> นำไปใช้ (-)
-              </label>
-            </div>
-            
-            <div className="relative">
-              <span className="absolute left-4 top-3.5 text-slate-400 font-bold">฿</span>
-              <input type="number" placeholder="0.00" value={savingsAmount} onChange={e=>setSavingsAmount(e.target.value)} className={`${theme.input} pl-9 text-lg font-bold`} required />
-            </div>
-            <input type="text" placeholder="ระบุที่มา / หมายเหตุการใช้จ่าย" value={savingsSource} onChange={e=>setSavingsSource(e.target.value)} className={theme.input} required />
-            <button type="submit" className={`${theme.button} py-3.5 mt-2`}>ยืนยันการบันทึก</button>
-          </form>
-        </div>
-
-        <div className={`${theme.card} p-6`}>
-          <h3 className={`font-bold ${theme.primary} mb-4`}>ประวัติการทำรายการล่าสุด</h3>
-          <div className="space-y-3">
-            {savings.transactions.length === 0 ? (
-              <p className="text-center text-slate-400 text-sm py-4">ยังไม่มีประวัติ</p>
-            ) : (
-              savings.transactions.map(t => (
-                <div key={t.id} className="flex justify-between items-center p-3 sm:p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-full ${t.type === 'add' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
-                      {t.type === 'add' ? <ArrowDownRight size={18} /> : <ArrowUpRight size={18} />}
-                    </div>
-                    <div>
-                      <p className="text-slate-800 font-bold text-sm sm:text-base">{t.source}</p>
-                      <p className="text-xs text-slate-500">{new Date(t.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-                    </div>
-                  </div>
-                  <div className={`font-black ${t.type === 'add' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {t.type === 'add' ? '+' : '-'}{formatCurrency(t.amount)}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderSettings = () => {
-    const handleClearData = () => {
-      if (window.confirm("⚠️ คำเตือน: คุณแน่ใจหรือไม่ที่จะล้างข้อมูล 'รายการบิล' และ 'ประวัติกองกลาง' ทั้งหมด?\n\n(การกระทำนี้ไม่สามารถกู้คืนได้ แต่รายชื่อ, หมวดหมู่ และบัญชี จะยังคงอยู่)")) {
-        updateDB({ expenses: [], savings: { currentAmount: 0, transactions: [] } });
-        showToast("ล้างข้อมูลธุรกรรมเรียบร้อยแล้ว");
-      }
-    };
-
-    return (
-      <div className="space-y-6 animate-fadeIn px-4 sm:px-0 pb-6">
-        <h2 className={`text-2xl font-black ${theme.primary} pt-2`}>ตั้งค่าระบบ (เชื่อมต่อ Google Sheets)</h2>
-        
-        {(!GAS_URL || GAS_URL.includes("ใส่_URL")) ? (
-          <div className="bg-amber-50 text-amber-800 p-4 rounded-2xl border border-amber-200 text-sm font-medium">
-            ⚠️ <b>โหมดออฟไลน์:</b> คุณยังไม่ได้ใส่ URL ของ Google Sheets ข้อมูลตอนนี้ถูกเก็บไว้ในเครื่องของคุณเท่านั้น (คนอื่นจะไม่เห็น)
-          </div>
-        ) : (
-          <div className="bg-emerald-50 text-emerald-800 p-4 rounded-2xl border border-emerald-200 text-sm font-medium flex items-center">
-            <Cloud size={18} className="mr-2 shrink-0"/> <b>เชื่อมต่อคลาวด์แล้ว:</b> ข้อมูลของคุณจะถูกซิงค์กับ Google Sheets อัตโนมัติและแชร์ให้คนอื่นดูได้
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          <ListManager title="รายชื่อสมาชิกครอบครัว" data={members} updateDB={updateDB} dataKey="members" />
-          <ListManager title="หมวดหมู่ค่าใช้จ่าย" data={categories} updateDB={updateDB} dataKey="categories" isCategory={true} />
-          <ListManager title="แหล่งที่มา/บัญชีการเงิน" data={sources} updateDB={updateDB} dataKey="sources" />
-          
-          <div className={`${theme.card} p-5 md:col-span-2 lg:col-span-3`}>
-            <h3 className={`font-bold ${theme.primary} mb-4 flex items-center`}><Database size={18} className="mr-2"/> การจัดการข้อมูล</h3>
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-2">
-                 <p className="text-xs text-slate-500 max-w-xl leading-relaxed">
-                   หากต้องการเริ่มต้นใหม่ (เช่น เริ่มรอบปีใหม่) คุณสามารถกด <b>"ล้างข้อมูล"</b> เพื่อลบประวัติ <b>"บิล"</b> และ <b>"กองกลาง"</b> ทั้งหมดทิ้งได้ (รายชื่อและหมวดหมู่จะไม่ถูกลบ)
-                 </p>
-                 <button 
-                   onClick={handleClearData}
-                   className="w-full sm:w-auto px-4 py-2.5 bg-rose-50 text-rose-600 border border-rose-200 rounded-xl font-bold text-sm hover:bg-rose-100 hover:shadow-sm transition-all shrink-0 flex items-center justify-center"
-                 >
-                   <Trash2 size={16} className="mr-2"/> ล้างข้อมูลธุรกรรม
-                 </button>
-              </div>
-            </div>
-          </div>
-
-        </div>
-        <div className="text-center text-slate-400 text-xs mt-8">
-          Money-Pop Family Expenses v5.0 (Auto-Installment)
-        </div>
-      </div>
-    );
-  };
 
   const renderSplitPaySelectModal = () => {
     if (!splitSelectModal.isOpen) return null;
@@ -1265,9 +707,7 @@ export default function App() {
            <div className="space-y-2.5 mb-8 text-left">
              {availableMembers.map(mId => {
                const m = members.find(mbr => mbr.id === mId);
-               
-               const monthlyDivisor = (expenseData.paymentType === 'installment' && expenseData.installmentMonths) ? expenseData.installmentMonths : 1;
-               const amount = expenseData.splitDetails[mId].amount / monthlyDivisor;
+               const amount = expenseData.splitDetails[mId].amount;
                
                const isSelected = selectedMembers.includes(mId);
                return (
@@ -1304,42 +744,359 @@ export default function App() {
     );
   };
 
+  const renderNavigation = () => (
+    <nav className="bg-white border-t border-slate-200 pb-safe pt-2 px-4 sticky bottom-0 z-40 sm:top-0 sm:bottom-auto sm:border-b sm:border-t-0 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
+      <div className="flex space-x-2 w-full justify-around max-w-lg mx-auto sm:max-w-none sm:justify-start">
+        {[
+          { id: 'dashboard', icon: <Home size={22}/>, label: 'ภาพรวม' },
+          { id: 'expenses', icon: <CreditCard size={22}/>, label: 'บิล' },
+          { id: 'savings', icon: <PiggyBank size={22}/>, label: 'กองกลาง' },
+          { id: 'settings', icon: <Settings size={22}/>, label: 'ตั้งค่า' }
+        ].map(item => {
+          const isActive = activeTab === item.id;
+          return (
+            <button key={item.id} onClick={() => setActiveTab(item.id)}
+              className={`flex flex-col items-center justify-center w-16 h-14 sm:flex-row sm:w-auto sm:px-6 sm:py-2 sm:rounded-xl transition-colors duration-200 ${isActive ? 'text-blue-800 sm:bg-blue-50 sm:text-blue-800' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              <div className={`mb-1 sm:mb-0 sm:mr-2 ${isActive ? 'scale-110 transition-transform' : ''}`}>{item.icon}</div>
+              <span className={`text-[10px] sm:text-sm font-semibold tracking-wide ${isActive ? 'opacity-100' : 'opacity-80'}`}>{item.label}</span>
+            </button>
+          )
+        })}
+      </div>
+    </nav>
+  );
+
+  const renderFilters = () => (
+    <div className="bg-white px-4 py-3 sm:rounded-2xl border-b sm:border border-slate-200 mb-4 sm:mb-6 flex overflow-x-auto custom-scrollbar gap-3 hide-scrollbar snap-x">
+      <div className="flex items-center space-x-2 text-slate-700 font-bold shrink-0 snap-start pl-2"><Filter size={18} /></div>
+      <div className="shrink-0 snap-start"><input type="month" value={filters.month} onChange={e => setFilters({...filters, month: e.target.value})} className="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-blue-100 outline-none" /></div>
+      <div className="shrink-0 snap-start"><select value={filters.payer} onChange={e => setFilters({...filters, payer: e.target.value})} className="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-2 text-sm font-medium outline-none"><option value="">👤 ทุกคน</option>{members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></div>
+      <div className="shrink-0 snap-start"><select value={filters.category} onChange={e => setFilters({...filters, category: e.target.value})} className="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-2 text-sm font-medium outline-none"><option value="">📁 ทุกหมวด</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+      <div className="shrink-0 snap-start pr-4 sm:pr-0"><select value={filters.source} onChange={e => setFilters({...filters, source: e.target.value})} className="bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-2 text-sm font-medium outline-none"><option value="">💳 ทุกบัญชี</option>{sources.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
+    </div>
+  );
+
+  const renderDashboard = () => {
+    let totalPaid = 0;
+    let totalPending = 0;
+    const categoryDataMap = {};
+    const memberDataMap = {};
+
+    filteredExpenses.forEach(exp => {
+      const catName = categories.find(c => c.id === exp.categoryId)?.name || 'ไม่ระบุ';
+      let amountConsidered = 0;
+      let isPaidConsidered = false;
+
+      if (exp.payerType === 'single') {
+        amountConsidered = exp.totalAmount;
+        isPaidConsidered = exp.status === 'paid';
+      } else {
+        if (filters.payer) {
+          amountConsidered = exp.splitDetails[filters.payer].amount;
+          isPaidConsidered = exp.splitDetails[filters.payer].paid;
+        } else {
+          amountConsidered = exp.totalAmount;
+          let localPaid = 0;
+          let localPending = 0;
+          Object.values(exp.splitDetails).forEach(v => {
+            if(v.paid) localPaid += v.amount;
+            else localPending += v.amount;
+          });
+          totalPaid += localPaid;
+          totalPending += localPending;
+          
+          if (!categoryDataMap[catName]) categoryDataMap[catName] = 0;
+          categoryDataMap[catName] += amountConsidered;
+          return; 
+        }
+      }
+
+      if (isPaidConsidered) totalPaid += amountConsidered;
+      else totalPending += amountConsidered;
+      if (!categoryDataMap[catName]) categoryDataMap[catName] = 0;
+      categoryDataMap[catName] += amountConsidered;
+
+      if (!filters.payer) {
+        if (exp.payerType === 'single') {
+          const mName = members.find(m => m.id === exp.payerId)?.name || 'ไม่ระบุ';
+          if (!memberDataMap[mName]) memberDataMap[mName] = 0;
+          memberDataMap[mName] += exp.totalAmount;
+        } else {
+          Object.entries(exp.splitDetails).forEach(([mId, details]) => {
+            const mName = members.find(m => m.id === mId)?.name || 'ไม่ระบุ';
+            if (!memberDataMap[mName]) memberDataMap[mName] = 0;
+            memberDataMap[mName] += details.amount;
+          });
+        }
+      }
+    });
+
+    const pieData = [{ name: 'ชำระแล้ว', value: totalPaid, color: '#3b82f6' }, { name: 'รอชำระ', value: totalPending, color: '#f43f5e' }];
+    const catData = Object.keys(categoryDataMap).map(k => ({ name: k, value: categoryDataMap[k] }));
+    const memData = Object.keys(memberDataMap).map(k => ({ name: k, value: memberDataMap[k] }));
+    const grandTotal = totalPaid + totalPending;
+
+    return (
+      <div className="space-y-4 sm:space-y-5 animate-fadeIn pb-6">
+        {renderFilters()}
+        <div className="px-4 sm:px-0 flex flex-col gap-4 sm:gap-5">
+          <div className={`${theme.card} p-5 sm:p-6 bg-gradient-to-br from-blue-900 to-blue-800 text-white shadow-xl flex flex-col md:flex-row gap-5 sm:gap-6`}>
+            <div className="w-full md:w-5/12 lg:w-1/2 flex flex-col justify-between">
+              <div className="mb-4 md:mb-0">
+                <p className="text-blue-200 text-sm font-medium mb-1">ยอดใช้จ่ายจริงเดือนนี้</p>
+                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight">{formatCurrency(grandTotal)}</h2>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mt-auto">
+                <div className="bg-white/95 text-slate-800 p-3 sm:p-4 rounded-xl shadow-sm border-l-4 border-blue-500">
+                  <p className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-wide">ชำระแล้ว</p>
+                  <p className="text-base sm:text-lg lg:text-xl font-black text-blue-700 mt-1 truncate">{formatCurrency(totalPaid)}</p>
+                </div>
+                <div className="bg-white/95 text-slate-800 p-3 sm:p-4 rounded-xl shadow-sm border-l-4 border-rose-500">
+                  <p className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-wide">รอชำระ</p>
+                  <p className="text-base sm:text-lg lg:text-xl font-black text-rose-600 mt-1 truncate">{formatCurrency(totalPending)}</p>
+                </div>
+              </div>
+            </div>
+            <div className="w-full md:w-7/12 lg:w-1/2 bg-white/10 rounded-2xl p-4 backdrop-blur-md border border-white/10 flex items-center justify-center min-h-[180px] sm:min-h-[220px]">
+              <ResponsiveContainer width="100%" height="100%" minHeight={180}>
+                <PieChart>
+                  <Pie data={pieData} innerRadius={55} outerRadius={80} paddingAngle={4} dataKey="value" stroke="none">
+                    {pieData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
+                  </Pie>
+                  <RechartsTooltip formatter={(value) => formatCurrency(value)} contentStyle={{ backgroundColor: '#ffffff', border: 'none', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', color: '#1e293b' }} itemStyle={{ color: '#1e293b', fontWeight: 'bold' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className={`grid grid-cols-1 ${!filters.payer ? 'md:grid-cols-2' : ''} gap-4 sm:gap-5`}>
+            <div className={`${theme.card} p-4 sm:p-5 flex flex-col min-h-[260px] sm:min-h-[280px]`}>
+              <h3 className={`text-sm font-bold ${theme.primary} mb-4 flex items-center shrink-0`}><ShoppingBag size={16} className="mr-2"/> แยกตามหมวดหมู่</h3>
+              <div className="flex-1 min-h-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={catData} layout="vertical" margin={{ top: 0, right: 0, left: 10, bottom: 0 }}>
+                    <XAxis type="number" hide />
+                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} fontSize={11} fill="#64748b" width={75} />
+                    <RechartsTooltip cursor={{fill: '#f1f5f9'}} contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }} formatter={(val) => formatCurrency(val)} />
+                    <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={20}>
+                      {catData.map((entry, index) => (<Cell key={`cell-${index}`} fill={theme.chartColors[index % theme.chartColors.length]} />))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+            {!filters.payer && (
+              <div className={`${theme.card} p-4 sm:p-5 flex flex-col min-h-[260px] sm:min-h-[280px]`}>
+                <h3 className={`text-sm font-bold ${theme.primary} mb-2 flex items-center shrink-0`}><Users size={16} className="mr-2"/> แยกตามบุคคล</h3>
+                <div className="flex-1 min-h-[200px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={memData} innerRadius={45} outerRadius={75} dataKey="value" stroke="#fff" strokeWidth={2}>
+                        {memData.map((entry, index) => (<Cell key={`cell-${index}`} fill={theme.chartColors[index % theme.chartColors.length]} />))}
+                      </Pie>
+                      <RechartsTooltip formatter={(val) => formatCurrency(val)} contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px' }} />
+                      <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderExpensesList = () => {
+    return (
+      <div className="space-y-4 animate-fadeIn pb-6">
+        <div className="px-4 sm:px-0 flex justify-between items-end mb-2 pt-2">
+          <div>
+            <h2 className={`text-2xl font-black ${theme.primary}`}>รายการบิล</h2>
+            <p className="text-slate-500 text-sm font-medium">{filteredExpenses.length} รายการในเดือนนี้</p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => setIsEmailModalOpen(true)} className={`bg-amber-100 text-amber-700 hover:bg-amber-200 px-3 py-2 sm:px-4 sm:py-2.5 rounded-full flex items-center space-x-1.5 transition-colors shadow-sm`}>
+              <Mail size={18} /> <span className="hidden sm:inline font-bold">แจ้งเตือน</span>
+            </button>
+            <button onClick={() => { setEditingExpense(null); setIsModalOpen(true); }} className={`${theme.button} px-4 py-2 sm:px-5 sm:py-2.5 rounded-full flex items-center space-x-1.5 shadow-blue-500/20`}>
+              <Plus size={18} /> <span className="hidden sm:inline">เพิ่มบิล</span>
+            </button>
+          </div>
+        </div>
+
+        {renderFilters()}
+
+        {Object.keys(selectedForPay).length > 0 && (
+          <div className="sticky top-2 z-40 mx-4 sm:mx-0 bg-white p-4 rounded-2xl border border-blue-200 shadow-[0_10px_25px_rgba(37,99,235,0.15)] flex justify-between items-center mb-4 animate-slideUp">
+            <div>
+              <span className="text-blue-600 text-xs font-bold uppercase tracking-wide">เลือก {Object.keys(selectedForPay).length} รายการ</span>
+              <p className="text-blue-900 text-xl font-black">{formatCurrency(selectedTotalAmount)}</p>
+            </div>
+            <button onClick={processBulkPayment} className={`${theme.button} px-5 py-2.5 rounded-xl font-bold shadow-blue-600/30`}>ชำระเงิน</button>
+          </div>
+        )}
+
+        <div className="px-4 sm:px-0 grid gap-3 sm:gap-4">
+          {filteredExpenses.map(exp => {
+            const cat = categories.find(c => c.id === exp.categoryId);
+            const source = sources.find(s => s.id === exp.sourceId);
+            
+            let displayAmount = exp.totalAmount;
+            let displayStatus = exp.status;
+            let isPartiallyPaid = false;
+
+            if (exp.payerType === 'split') {
+               if (filters.payer) {
+                 displayAmount = exp.splitDetails[filters.payer].amount;
+                 displayStatus = exp.splitDetails[filters.payer].paid ? 'paid' : 'pending';
+               } else {
+                 const allPaid = Object.values(exp.splitDetails).every(v => v.paid);
+                 const somePaid = Object.values(exp.splitDetails).some(v => v.paid);
+                 if (somePaid && !allPaid) isPartiallyPaid = true;
+               }
+            }
+
+            const isChecked = !!selectedForPay[exp.id];
+            const showAsPaid = displayStatus === 'paid';
+
+            return (
+              <div key={exp.id} className={`${theme.card} p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between transition-all duration-200 ${showAsPaid ? 'opacity-70 bg-slate-50 shadow-none border-dashed' : isChecked ? 'ring-2 ring-blue-500 border-transparent bg-blue-50/30' : 'hover:border-blue-200 hover:shadow-md'}`}>
+                <div className="flex items-start sm:items-center w-full sm:w-auto">
+                  {!showAsPaid && (
+                    <div className="mr-3 sm:mr-4 mt-1 sm:mt-0">
+                      <input type="checkbox" checked={isChecked} onChange={() => handleCheckExpense(exp)} className="w-5 h-5 rounded-md border-slate-300 text-blue-600 focus:ring-blue-500 transition-colors" />
+                    </div>
+                  )}
+                  <div className={`p-3 rounded-2xl mr-3 sm:mr-4 flex-shrink-0 ${showAsPaid ? 'bg-slate-200 grayscale' : 'bg-slate-100 shadow-sm'}`}>
+                    {cat ? getIconForCategory(cat.name) : <CreditCard className="text-slate-400" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                      <h3 className={`font-bold text-base sm:text-lg truncate ${showAsPaid ? 'text-slate-400 line-through' : theme.textMain}`}>{exp.title}</h3>
+                      {exp.paymentType === 'installment' && (
+                        <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2.5 py-0.5 rounded-full font-bold">
+                          งวด {exp.currentInstallment}/{exp.installmentMonths}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap text-xs text-slate-500 font-medium gap-x-2 gap-y-1 mt-1">
+                      <span className="bg-slate-100 px-2 py-0.5 rounded-md">{cat?.name || 'ไม่ระบุ'}</span>
+                      <span className="bg-slate-100 px-2 py-0.5 rounded-md text-slate-600">{source?.name || 'ไม่ระบุ'}</span>
+                      {exp.payerType === 'split' && !filters.payer && <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded-md">หาร {Object.keys(exp.splitDetails).length} คน</span>}
+                    </div>
+
+                    {exp.payerType === 'split' && !filters.payer && (
+                      <div className="mt-3 text-xs space-y-1.5 border-t border-slate-100 pt-2 w-full sm:max-w-xs">
+                        {Object.entries(exp.splitDetails).map(([mId, detail]) => {
+                          const m = members.find(mbr => mbr.id === mId);
+                          return (
+                            <div key={mId} className={`flex items-center justify-between ${detail.paid ? 'text-emerald-600 font-medium' : 'text-slate-500'}`}>
+                              <span className="truncate pr-2">• {m?.name}</span>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span>{formatCurrency(detail.amount)}</span>
+                                {detail.paid ? <Check size={14} className="bg-emerald-100 rounded-full p-0.5"/> : <span className="text-[10px] bg-rose-50 text-rose-500 px-1.5 py-0.5 rounded font-bold">รอชำระ</span>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-4 sm:mt-0 w-full sm:w-auto flex sm:flex-col justify-between sm:justify-end items-center sm:items-end border-t border-slate-100 sm:border-0 pt-3 sm:pt-0">
+                  <div className={`text-lg sm:text-xl font-black flex items-baseline ${showAsPaid ? 'text-slate-400' : 'text-blue-800'}`}>
+                    {formatCurrency(displayAmount)}
+                  </div>
+                  <div className="flex items-center space-x-1 sm:space-x-2 mt-1 sm:mt-2">
+                    {showAsPaid ? (
+                      <span className="text-emerald-700 text-xs font-bold flex items-center bg-emerald-100 px-2.5 py-1 rounded-full"><Check size={12} className="mr-1 stroke-[3]"/> ชำระแล้ว</span>
+                    ) : isPartiallyPaid ? (
+                      <span className="text-amber-700 text-xs font-bold bg-amber-100 px-2.5 py-1 rounded-full">ชำระบางส่วน</span>
+                    ) : (
+                      <span className="text-rose-600 text-xs font-bold bg-rose-50 px-2.5 py-1 rounded-full">รอชำระ</span>
+                    )}
+                    <button onClick={() => { setEditingExpense(exp); setIsModalOpen(true); }} className="p-1.5 sm:p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Edit size={16} /></button>
+                    <button onClick={() => deleteExpense(exp.id, exp.groupId)} className="p-1.5 sm:p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"><Trash2 size={16} /></button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          
+          {filteredExpenses.length === 0 && (
+             <div className="text-center p-12 text-slate-400 bg-white rounded-3xl border border-dashed border-slate-300 mx-4 sm:mx-0">
+               <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3"><ShoppingBag size={24} className="text-slate-300" /></div>
+               <p className="font-medium">ไม่มีรายการบิลในเดือนนี้</p>
+             </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderSavings = () => { 
+    const handleSaveFund = (e) => {
+      e.preventDefault();
+      if (!savingsAmount || isNaN(savingsAmount)) return;
+      const val = parseFloat(savingsAmount);
+      const newTotal = savingsType === 'add' ? savings.currentAmount + val : savings.currentAmount - val;
+      const newTransaction = { id: Date.now().toString(), type: savingsType, amount: val, source: savingsSource || 'ไม่ระบุ', date: new Date().toISOString() };
+      const newSavings = { currentAmount: newTotal, transactions: [newTransaction, ...savings.transactions].slice(0, 50) };
+      updateDB({ savings: newSavings });
+      setSavingsAmount(''); setSavingsSource(''); showToast('บันทึกข้อมูลกองกลางเรียบร้อย');
+    };
+    return (
+      <div className="space-y-4 sm:space-y-6 animate-fadeIn pb-6 px-4 sm:px-0">
+        <div className={`${theme.card} p-8 text-center bg-gradient-to-br from-indigo-500 to-blue-600 text-white relative overflow-hidden shadow-lg`}>
+           <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white via-transparent to-transparent"></div>
+           <div className="bg-white/20 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 backdrop-blur-md shadow-inner"><PiggyBank size={32} className="text-white" /></div>
+           <h2 className="text-blue-100 text-sm font-medium uppercase tracking-widest mb-1">ยอดเงินกองกลางคงเหลือ</h2>
+           <p className="text-4xl sm:text-5xl font-black drop-shadow-md">{formatCurrency(savings.currentAmount)}</p>
+        </div>
+        <div className={`${theme.card} p-6`}>
+          <h3 className={`font-bold ${theme.primary} mb-4 flex items-center`}><Edit size={18} className="mr-2"/> บันทึกรายการ</h3>
+          <form onSubmit={handleSaveFund} className="flex flex-col gap-4">
+            <div className="flex bg-slate-100 p-1 rounded-xl">
+              <label className={`flex-1 text-center py-2 rounded-lg cursor-pointer text-sm font-bold transition-colors ${savingsType === 'add' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-500 hover:text-slate-700'}`}><input type="radio" name="savType" value="add" checked={savingsType === 'add'} onChange={()=>setSavingsType('add')} className="hidden" /> รับเงินเข้า (+)</label>
+              <label className={`flex-1 text-center py-2 rounded-lg cursor-pointer text-sm font-bold transition-colors ${savingsType === 'deduct' ? 'bg-white shadow-sm text-rose-600' : 'text-slate-500 hover:text-slate-700'}`}><input type="radio" name="savType" value="deduct" checked={savingsType === 'deduct'} onChange={()=>setSavingsType('deduct')} className="hidden" /> นำไปใช้ (-)</label>
+            </div>
+            <div className="relative"><span className="absolute left-4 top-3.5 text-slate-400 font-bold">฿</span><input type="number" placeholder="0.00" value={savingsAmount} onChange={e=>setSavingsAmount(e.target.value)} className={`${theme.input} pl-9 text-lg font-bold`} required /></div>
+            <input type="text" placeholder="ระบุที่มา / หมายเหตุการใช้จ่าย" value={savingsSource} onChange={e=>setSavingsSource(e.target.value)} className={theme.input} required />
+            <button type="submit" className={`${theme.button} py-3.5 mt-2`}>ยืนยันการบันทึก</button>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
+  const renderSettings = () => {
+    return (
+      <div className="space-y-6 animate-fadeIn px-4 sm:px-0 pb-6">
+        <h2 className={`text-2xl font-black ${theme.primary} pt-2`}>ตั้งค่าระบบ</h2>
+        <MemberManager data={members} updateDB={updateDB} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+          <ListManager title="หมวดหมู่ค่าใช้จ่าย" data={categories} updateDB={updateDB} dataKey="categories" isCategory={true} />
+          <ListManager title="แหล่งที่มา/บัญชีการเงิน" data={sources} updateDB={updateDB} dataKey="sources" />
+        </div>
+      </div>
+    );
+  };
+
   if (isLoading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center text-blue-800 font-bold animate-pulse">กำลังโหลดข้อมูล...</div>;
 
   return (
     <div className={`min-h-screen ${theme.bg} font-sans selection:bg-blue-200`}>
       <div className="max-w-md sm:max-w-3xl lg:max-w-5xl mx-auto flex flex-col h-screen overflow-hidden bg-slate-50/50 sm:border-x border-slate-200 shadow-sm">
-        
         <header className="bg-white px-4 sm:px-6 py-3 flex justify-between items-center border-b border-slate-200 shadow-[0_2px_10px_rgba(0,0,0,0.02)] z-30">
           <div className="flex items-center gap-2">
-            <div className="bg-blue-800 text-white p-1.5 rounded-lg shadow-sm">
-              <Zap size={20} className="fill-white" />
-            </div>
-            <div className="text-xl sm:text-2xl font-black tracking-tight text-blue-900">
-              MONEY<span className="text-blue-500">-POP</span>
-            </div>
+            <div className="bg-blue-800 text-white p-1.5 rounded-lg shadow-sm"><Zap size={20} className="fill-white" /></div>
+            <div className="text-xl sm:text-2xl font-black tracking-tight text-blue-900">MONEY<span className="text-blue-500">-POP</span></div>
           </div>
           <div className="flex items-center gap-2">
-             <button 
-                onClick={() => fetchData(true)}
-                className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
-                title="ดึงข้อมูลล่าสุดจาก Google Sheets"
-             >
-                <RefreshCw size={18} className={isSyncing ? "animate-spin text-blue-500" : ""} />
-             </button>
-             <div className={`px-3 py-1.5 rounded-full border flex items-center ${GAS_URL && !GAS_URL.includes("ใส่_URL") ? 'bg-emerald-50 border-emerald-100' : 'bg-slate-100 border-slate-200'}`}>
-               {GAS_URL && !GAS_URL.includes("ใส่_URL") ? (
-                 <>
-                  <Cloud size={12} className="text-emerald-500 mr-2" />
-                  <span className="text-xs font-bold text-emerald-700">{isSyncing ? 'Syncing...' : 'Synced'}</span>
-                 </>
-               ) : (
-                 <>
-                  <CloudOff size={12} className="text-slate-400 mr-2" />
-                  <span className="text-xs font-bold text-slate-500">Offline</span>
-                 </>
-               )}
-             </div>
+             <button onClick={() => fetchData(true)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"><RefreshCw size={18} className={isSyncing ? "animate-spin text-blue-500" : ""} /></button>
           </div>
         </header>
 
@@ -1349,46 +1106,19 @@ export default function App() {
           {activeTab === 'savings' && renderSavings()}
           {activeTab === 'settings' && renderSettings()}
         </main>
-
         {renderNavigation()}
       </div>
 
-      {isModalOpen && (
-        <ExpenseFormModal 
-          editingExpense={editingExpense}
-          dbData={dbData}
-          updateDB={updateDB}
-          setIsModalOpen={setIsModalOpen}
-          showToast={showToast}
-          sendLineNotify={sendLineMessage}
-        />
-      )}
+      {isModalOpen && <ExpenseFormModal editingExpense={editingExpense} dbData={dbData} updateDB={updateDB} setIsModalOpen={setIsModalOpen} showToast={showToast} />}
+      {isEmailModalOpen && <EmailNotifyModal expenses={expenses} members={members} setIsOpen={setIsEmailModalOpen} showToast={showToast} />}
       {renderSplitPaySelectModal()}
 
       {toastMessage && (
         <div className="fixed top-20 sm:top-6 left-1/2 transform -translate-x-1/2 z-[200] bg-slate-800 text-white px-6 py-3.5 rounded-full shadow-2xl font-medium animate-slideDown text-sm flex items-center border border-slate-700 whitespace-nowrap">
-          <Check size={18} className="mr-2 text-emerald-400" />
-          {toastMessage}
+          <Check size={18} className="mr-2 text-emerald-400" />{toastMessage}
         </div>
       )}
-
-      <style dangerouslySetInnerHTML={{__html: `
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
-        
-        .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
-        .animate-slideUp { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        .animate-slideDown { animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes slideDown { from { opacity: 0; transform: translateY(-20px) translateX(-50%); } to { opacity: 1; transform: translateY(0) translateX(-50%); } }
-      `}} />
+      <style dangerouslySetInnerHTML={{__html: `.custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; } .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; } .hide-scrollbar::-webkit-scrollbar { display: none; } .pb-safe { padding-bottom: env(safe-area-inset-bottom); } .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; } .animate-slideUp { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; } .animate-slideDown { animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; } @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } } @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } } @keyframes slideDown { from { opacity: 0; transform: translateY(-20px) translateX(-50%); } to { opacity: 1; transform: translateY(0) translateX(-50%); } }`}} />
     </div>
   );
 }
