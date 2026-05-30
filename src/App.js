@@ -14,9 +14,9 @@ import {
 } from 'lucide-react';
 
 // ==========================================
-// 1. นำ URL Web App ของ Google Sheet มาใส่ตรงนี้
+// ลิงก์เชื่อมต่อ Google Sheets DB ของคุณ
 // ==========================================
-const GAS_URL = "1tfz15iDlexM-DjGSwzIPST0zPmrcH8ixyrHMpk-zuQc"; 
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzbO-BbqufnRT6kZ1j8u8PLmhxPM3MSCY_VRZIUOsV6KlGIbGeOAgBVH_7HnVBSvSne/exec"; 
 
 // --- Modern Banking Theme Colors ---
 const theme = {
@@ -177,7 +177,6 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
     if (isNaN(amount) || amount <= 0) return window.alert("กรุณาใส่จำนวนเงินที่ถูกต้อง");
 
     let finalData = { ...formData, updatedAt: Date.now() };
-    finalData.totalAmount = amount; // เก็บยอดรวมเต็มจำนวนไว้เสมอ
 
     let generatedExpenses = [];
     const groupId = (editingExpense && editingExpense.groupId) ? editingExpense.groupId : Date.now().toString();
@@ -199,19 +198,21 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
       const currentInst = parseInt(formData.currentInstallment) || 1;
       let [editYear, editMonth] = formData.month.split('-').map(Number);
       
-      // คำนวณหาเดือนแรกสุด (งวดที่ 1) เผื่อในกรณีที่ผู้ใช้กดแก้ไขบิลที่เป็นงวดที่ 3
       let baseMonth = editMonth - (currentInst - 1);
       let baseYear = editYear;
       while (baseMonth < 1) { baseMonth += 12; baseYear -= 1; }
+
+      // คำนวณยอดรายเดือน และระบุว่าเป็น isMonthlyAmount แล้ว
+      const monthlyTotalAmount = amount / totalMonths;
 
       let splitData = {};
       if (formData.payerType === 'split') {
         const selectedMembers = Object.keys(splitSelection).filter(k => splitSelection[k]);
         if (selectedMembers.length === 0) return window.alert("กรุณาเลือกคนที่ต้องหารอย่างน้อย 1 คน");
-        const amountPerPerson = amount / selectedMembers.length; // ยอดเต็มต่อคน
+        const monthlyPerPerson = monthlyTotalAmount / selectedMembers.length;
         
         selectedMembers.forEach(mId => {
-          splitData[mId] = { amount: amountPerPerson, paid: false };
+          splitData[mId] = { amount: monthlyPerPerson, paid: false };
         });
       }
 
@@ -226,7 +227,9 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
           id: `${groupId}-${i}`,
           groupId: groupId,
           month: formattedMonth,
-          totalAmount: amount, // เก็บยอดเต็มเสมอ เพื่อความเสถียร
+          totalAmount: monthlyTotalAmount, // บันทึกยอดที่หารรายเดือนแล้ว!
+          isMonthlyAmount: true, // ตัวแปรบอกว่ายอดถูกหารมาแล้ว ไม่ต้องไปหารซ้ำในหน้าต่างๆ
+          fullTotalAmount: amount, // เก็บยอดเต็มไว้สำรองเผื่อแก้ไข
           installmentMonths: totalMonths,
           currentInstallment: i,
           payerType: formData.payerType,
@@ -239,6 +242,7 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
     } else {
       delete finalData.installmentMonths;
       delete finalData.currentInstallment;
+      finalData.totalAmount = amount;
       
       if (formData.payerType === 'split') {
         const selectedMembers = Object.keys(splitSelection).filter(k => splitSelection[k]);
@@ -271,14 +275,15 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
     if (editingExpense) {
       const oldSourceObj = sources.find(s => s.id === editingExpense.sourceId);
       if (oldSourceObj && oldSourceObj.name.includes('กองกลาง')) {
-        const oldDivisor = (editingExpense.paymentType === 'installment' && editingExpense.installmentMonths) ? parseInt(editingExpense.installmentMonths) : 1;
+        // ดึงค่ายอดรายเดือนของเก่า
+        const oldDivisor = (editingExpense.paymentType === 'installment' && !editingExpense.isMonthlyAmount && editingExpense.installmentMonths) ? parseInt(editingExpense.installmentMonths) : 1;
         oldAmountDeducted = editingExpense.totalAmount / oldDivisor; 
       }
     }
     
     let newAmountDeducted = 0;
     if (isNewSourceCentralFund) {
-      const newDivisor = (formData.paymentType === 'installment' && formData.installmentMonths) ? parseInt(formData.installmentMonths) : 1;
+      const newDivisor = (formData.paymentType === 'installment') ? parseInt(formData.installmentMonths) : 1;
       newAmountDeducted = amount / newDivisor; 
     }
 
@@ -324,7 +329,9 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
             <div>
               <label className={`block text-sm font-semibold ${theme.textMuted} mb-1.5`}>ยอดรวมเต็มบิล (บาท)</label>
               <input type="number" required 
-                value={formData.totalAmount} 
+                value={editingExpense && editingExpense.paymentType === 'installment' && editingExpense.fullTotalAmount 
+                  ? editingExpense.fullTotalAmount 
+                  : (editingExpense && editingExpense.paymentType === 'installment' && !editingExpense.isMonthlyAmount ? editingExpense.totalAmount : formData.totalAmount)} 
                 onChange={e=>setFormData({...formData, totalAmount: e.target.value})} className={theme.input} placeholder="0.00" 
               />
             </div>
@@ -377,7 +384,11 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
                     <p className="text-sm text-blue-600 font-medium bg-blue-50 p-2.5 rounded-lg border border-blue-100 flex items-center justify-between">
                       <span>ยอดชำระต่อเดือน:</span>
                       <span className="font-black text-lg">
-                        {formatCurrency(parseFloat(formData.totalAmount) / parseInt(formData.installmentMonths))}
+                        {formatCurrency(
+                           (editingExpense && editingExpense.paymentType === 'installment' && editingExpense.fullTotalAmount 
+                            ? editingExpense.fullTotalAmount 
+                            : parseFloat(formData.totalAmount)) / parseInt(formData.installmentMonths)
+                        )}
                       </span>
                     </p>
                     <p className="text-xs text-amber-600 mt-2 flex items-center bg-amber-50 p-2 rounded-lg">
@@ -425,19 +436,6 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
                     </label>
                   ))}
                 </div>
-                {formData.totalAmount && Object.values(splitSelection).filter(Boolean).length > 0 && (
-                  <div className="mt-4 p-4 bg-white border border-blue-100 rounded-xl text-center shadow-sm">
-                    <p className={`text-xs font-semibold ${theme.textMuted} uppercase tracking-wide`}>
-                      ยอดแชร์ต่อคน {formData.paymentType === 'installment' ? '(ต่อเดือน)' : ''}
-                    </p>
-                    <p className="text-2xl font-bold text-blue-800 mt-1">
-                      {formatCurrency(
-                        (formData.totalAmount / (formData.paymentType === 'installment' && formData.installmentMonths ? parseInt(formData.installmentMonths) || 1 : 1)) / 
-                        Object.values(splitSelection).filter(Boolean).length
-                      )}
-                    </p>
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -465,8 +463,8 @@ const EmailNotifyModal = ({ expenses, members, setIsOpen, showToast }) => {
 
   let totalPending = 0;
   pendingExpenses.forEach(exp => {
-    const monthlyDivisor = (exp.paymentType === 'installment' && exp.installmentMonths) ? parseInt(exp.installmentMonths) : 1;
-    totalPending += (exp.payerType === 'single') ? (exp.totalAmount / monthlyDivisor) : (exp.splitDetails[selectedMember].amount / monthlyDivisor);
+    const divisor = (exp.paymentType === 'installment' && !exp.isMonthlyAmount && exp.installmentMonths) ? parseInt(exp.installmentMonths) : 1;
+    totalPending += (exp.payerType === 'single') ? (exp.totalAmount / divisor) : (exp.splitDetails[selectedMember].amount / divisor);
   });
 
   const handleSendEmail = async () => {
@@ -479,8 +477,8 @@ const EmailNotifyModal = ({ expenses, members, setIsOpen, showToast }) => {
     let bodyText = `สวัสดีคุณ ${memberObj.name},\n\nนี่คือสรุปยอดค่าใช้จ่ายที่คุณต้องชำระ\nยอดรวมทั้งสิ้น: ${formatCurrency(totalPending)}\n\nรายละเอียดบิลค้างชำระ:\n`;
     
     pendingExpenses.forEach((exp, idx) => {
-      const monthlyDivisor = (exp.paymentType === 'installment' && exp.installmentMonths) ? parseInt(exp.installmentMonths) : 1;
-      const amount = exp.payerType === 'single' ? (exp.totalAmount / monthlyDivisor) : (exp.splitDetails[selectedMember].amount / monthlyDivisor);
+      const divisor = (exp.paymentType === 'installment' && !exp.isMonthlyAmount && exp.installmentMonths) ? parseInt(exp.installmentMonths) : 1;
+      const amount = exp.payerType === 'single' ? (exp.totalAmount / divisor) : (exp.splitDetails[selectedMember].amount / divisor);
       const installText = exp.paymentType === 'installment' ? ` (งวด ${exp.currentInstallment}/${exp.installmentMonths})` : '';
       bodyText += `${idx+1}. ${exp.title} (${exp.month})${installText} - ${formatCurrency(amount)}\n`;
     });
@@ -527,8 +525,8 @@ const EmailNotifyModal = ({ expenses, members, setIsOpen, showToast }) => {
              <p className="text-3xl font-black text-rose-600 mb-3">{formatCurrency(totalPending)}</p>
              <div className="max-h-32 overflow-y-auto text-xs text-slate-600 space-y-1">
                {pendingExpenses.map(exp => {
-                 const monthlyDivisor = (exp.paymentType === 'installment' && exp.installmentMonths) ? parseInt(exp.installmentMonths) : 1;
-                 const amt = exp.payerType === 'single' ? (exp.totalAmount / monthlyDivisor) : (exp.splitDetails[selectedMember].amount / monthlyDivisor);
+                 const divisor = (exp.paymentType === 'installment' && !exp.isMonthlyAmount && exp.installmentMonths) ? parseInt(exp.installmentMonths) : 1;
+                 const amt = exp.payerType === 'single' ? (exp.totalAmount / divisor) : (exp.splitDetails[selectedMember].amount / divisor);
                  return (
                    <div key={exp.id} className="flex justify-between border-b border-slate-200 pb-1">
                      <span className="truncate pr-2">{exp.title} ({exp.month})</span>
@@ -570,7 +568,7 @@ export default function App() {
     }
     try {
       if(!silent) setIsSyncing(true);
-      // แก้ปัญหาการเปิดจากมือถือแล้วได้ข้อมูลเก่า ด้วย Cache-Busting
+      // แคชบัสเตอร์ (Cache-Busting) บังคับให้โหลดข้อมูลใหม่เสมอ (แก้ปัญหามือถือจำค่าเก่า)
       const urlWithCacheBust = GAS_URL.includes('?') ? `${GAS_URL}&t=${Date.now()}` : `${GAS_URL}?t=${Date.now()}`;
       const res = await fetch(urlWithCacheBust);
       const data = await res.json();
@@ -640,10 +638,10 @@ export default function App() {
       delete newSelected[expense.id];
       setSelectedForPay(newSelected);
     } else {
-      const monthlyDivisor = (expense.paymentType === 'installment' && expense.installmentMonths) ? parseInt(expense.installmentMonths) : 1;
+      const divisor = (expense.paymentType === 'installment' && !expense.isMonthlyAmount && expense.installmentMonths) ? parseInt(expense.installmentMonths) : 1;
       
       if (expense.payerType === 'single') {
-        setSelectedForPay({ ...selectedForPay, [expense.id]: { amount: expense.totalAmount / monthlyDivisor, type: 'single' } });
+        setSelectedForPay({ ...selectedForPay, [expense.id]: { amount: expense.totalAmount / divisor, type: 'single' } });
       } else {
         const unpaidMembers = Object.keys(expense.splitDetails).filter(mId => !expense.splitDetails[mId].paid);
         if (unpaidMembers.length === 0) return; 
@@ -656,10 +654,10 @@ export default function App() {
     const { expId, selectedMembers, expenseData } = splitSelectModal;
     if (selectedMembers.length === 0) { setSplitSelectModal({ isOpen: false, expId: null, members: [] }); return; }
     let amountToPay = 0;
-    const monthlyDivisor = (expenseData.paymentType === 'installment' && expenseData.installmentMonths) ? parseInt(expenseData.installmentMonths) : 1;
+    const divisor = (expenseData.paymentType === 'installment' && !expenseData.isMonthlyAmount && expenseData.installmentMonths) ? parseInt(expenseData.installmentMonths) : 1;
 
     selectedMembers.forEach(mId => {
-      amountToPay += (expenseData.splitDetails[mId].amount / monthlyDivisor);
+      amountToPay += (expenseData.splitDetails[mId].amount / divisor);
     });
 
     setSelectedForPay({
@@ -670,21 +668,17 @@ export default function App() {
   };
 
   const processBulkPayment = () => {
-    let totalPaid = 0;
     const newExpenses = expenses.map(expense => {
       if (!selectedForPay[expense.id]) return expense; 
       const payData = selectedForPay[expense.id];
       const newExpense = { ...expense };
-      const monthlyDivisor = (newExpense.paymentType === 'installment' && newExpense.installmentMonths) ? parseInt(newExpense.installmentMonths) : 1;
 
       if (payData.type === 'single') {
         newExpense.status = 'paid';
-        totalPaid += (newExpense.totalAmount / monthlyDivisor);
       } else if (payData.type === 'split') {
         const newSplitDetails = { ...newExpense.splitDetails };
         payData.memberIds.forEach(mId => {
           newSplitDetails[mId].paid = true;
-          totalPaid += (newSplitDetails[mId].amount / monthlyDivisor);
         });
         const allPaid = Object.values(newSplitDetails).every(v => v.paid);
         newExpense.splitDetails = newSplitDetails;
@@ -694,7 +688,7 @@ export default function App() {
     });
     updateDB({ expenses: newExpenses });
     setSelectedForPay({});
-    showToast(`ชำระเรียบร้อย ยอดรวม ${formatCurrency(totalPaid)}`);
+    showToast(`ชำระเรียบร้อย ยอดรวม ${formatCurrency(selectedTotalAmount)}`);
   };
 
   const undoPayment = (expense) => {
@@ -750,8 +744,8 @@ export default function App() {
       if (exp) {
         const sourceObj = sources.find(s => s.id === exp.sourceId);
         if (sourceObj && sourceObj.name.includes('กองกลาง')) {
-          const monthlyDivisor = (exp.paymentType === 'installment' && exp.installmentMonths) ? parseInt(exp.installmentMonths) : 1;
-          const returnedAmount = exp.totalAmount / monthlyDivisor;
+          const divisor = (exp.paymentType === 'installment' && !exp.isMonthlyAmount && exp.installmentMonths) ? parseInt(exp.installmentMonths) : 1;
+          const returnedAmount = exp.totalAmount / divisor;
           
           newSavings = {
             currentAmount: savings.currentAmount + returnedAmount,
@@ -789,8 +783,8 @@ export default function App() {
            <div className="space-y-2.5 mb-8 text-left">
              {availableMembers.map(mId => {
                const m = members.find(mbr => mbr.id === mId);
-               const monthlyDivisor = (expenseData.paymentType === 'installment' && expenseData.installmentMonths) ? parseInt(expenseData.installmentMonths) : 1;
-               const amount = expenseData.splitDetails[mId].amount / monthlyDivisor;
+               const divisor = (expenseData.paymentType === 'installment' && !expenseData.isMonthlyAmount && expenseData.installmentMonths) ? parseInt(expenseData.installmentMonths) : 1;
+               const amount = expenseData.splitDetails[mId].amount / divisor;
                
                const isSelected = selectedMembers.includes(mId);
                return (
@@ -828,7 +822,7 @@ export default function App() {
   };
 
   const renderNavigation = () => (
-    <nav className="bg-white border-t border-slate-200 pb-safe pt-2 px-4 sticky bottom-0 z-40 sm:top-0 sm:bottom-auto sm:border-b sm:border-t-0 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
+    <nav className="bg-white border-t border-slate-200 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2 px-4 sticky bottom-0 z-40 shrink-0 sm:top-0 sm:bottom-auto sm:border-b sm:border-t-0 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
       <div className="flex space-x-2 w-full justify-around max-w-lg mx-auto sm:max-w-none sm:justify-start">
         {[
           { id: 'dashboard', icon: <Home size={22}/>, label: 'ภาพรวม' },
@@ -868,25 +862,26 @@ export default function App() {
 
     filteredExpenses.forEach(exp => {
       const catName = categories.find(c => c.id === exp.categoryId)?.name || 'ไม่ระบุ';
-      const monthlyDivisor = (exp.paymentType === 'installment' && exp.installmentMonths) ? parseInt(exp.installmentMonths) : 1;
+      const divisor = (exp.paymentType === 'installment' && !exp.isMonthlyAmount && exp.installmentMonths) ? parseInt(exp.installmentMonths) : 1;
 
       let amountConsidered = 0;
       let isPaidConsidered = false;
 
       if (exp.payerType === 'single') {
-        amountConsidered = exp.totalAmount / monthlyDivisor;
+        amountConsidered = exp.totalAmount / divisor;
         isPaidConsidered = exp.status === 'paid';
       } else {
         if (filters.payer) {
-          amountConsidered = exp.splitDetails[filters.payer].amount / monthlyDivisor;
+          amountConsidered = exp.splitDetails[filters.payer].amount / divisor;
           isPaidConsidered = exp.splitDetails[filters.payer].paid;
         } else {
-          amountConsidered = exp.totalAmount / monthlyDivisor;
+          amountConsidered = exp.totalAmount / divisor;
           let localPaid = 0;
           let localPending = 0;
           Object.values(exp.splitDetails).forEach(v => {
-            if(v.paid) localPaid += (v.amount / monthlyDivisor);
-            else localPending += (v.amount / monthlyDivisor);
+            const amt = v.amount / divisor;
+            if(v.paid) localPaid += amt;
+            else localPending += amt;
           });
           totalPaid += localPaid;
           totalPending += localPending;
@@ -906,12 +901,12 @@ export default function App() {
         if (exp.payerType === 'single') {
           const mName = members.find(m => m.id === exp.payerId)?.name || 'ไม่ระบุ';
           if (!memberDataMap[mName]) memberDataMap[mName] = 0;
-          memberDataMap[mName] += (exp.totalAmount / monthlyDivisor);
+          memberDataMap[mName] += (exp.totalAmount / divisor);
         } else {
           Object.entries(exp.splitDetails).forEach(([mId, details]) => {
             const mName = members.find(m => m.id === mId)?.name || 'ไม่ระบุ';
             if (!memberDataMap[mName]) memberDataMap[mName] = 0;
-            memberDataMap[mName] += (details.amount / monthlyDivisor);
+            memberDataMap[mName] += (details.amount / divisor);
           });
         }
       }
@@ -1028,14 +1023,14 @@ export default function App() {
             const cat = categories.find(c => c.id === exp.categoryId);
             const source = sources.find(s => s.id === exp.sourceId);
             
-            const monthlyDivisor = (exp.paymentType === 'installment' && exp.installmentMonths) ? parseInt(exp.installmentMonths) : 1;
-            let displayAmount = exp.totalAmount / monthlyDivisor;
+            const divisor = (exp.paymentType === 'installment' && !exp.isMonthlyAmount && exp.installmentMonths) ? parseInt(exp.installmentMonths) : 1;
+            let displayAmount = exp.totalAmount / divisor;
             let displayStatus = exp.status;
             let isPartiallyPaid = false;
 
             if (exp.payerType === 'split') {
                if (filters.payer) {
-                 displayAmount = exp.splitDetails[filters.payer].amount / monthlyDivisor;
+                 displayAmount = exp.splitDetails[filters.payer].amount / divisor;
                  displayStatus = exp.splitDetails[filters.payer].paid ? 'paid' : 'pending';
                } else {
                  const allPaid = Object.values(exp.splitDetails).every(v => v.paid);
@@ -1081,7 +1076,7 @@ export default function App() {
                             <div key={mId} className={`flex items-center justify-between ${detail.paid ? 'text-emerald-600 font-medium' : 'text-slate-500'}`}>
                               <span className="truncate pr-2">• {m?.name}</span>
                               <div className="flex items-center gap-2 shrink-0">
-                                <span>{formatCurrency(detail.amount / monthlyDivisor)}</span>
+                                <span>{formatCurrency(detail.amount / divisor)}</span>
                                 {detail.paid ? <Check size={14} className="bg-emerald-100 rounded-full p-0.5"/> : <span className="text-[10px] bg-rose-50 text-rose-500 px-1.5 py-0.5 rounded font-bold">รอชำระ</span>}
                               </div>
                             </div>
@@ -1178,12 +1173,12 @@ export default function App() {
     );
   };
 
-  if (isLoading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center text-blue-800 font-bold animate-pulse">กำลังโหลดข้อมูล...</div>;
+  if (isLoading) return <div className="min-h-[100dvh] bg-slate-50 flex items-center justify-center text-blue-800 font-bold animate-pulse">กำลังโหลดข้อมูล...</div>;
 
   return (
-    <div className={`min-h-screen ${theme.bg} font-sans selection:bg-blue-200`}>
-      <div className="max-w-md sm:max-w-3xl lg:max-w-5xl mx-auto flex flex-col h-screen overflow-hidden bg-slate-50/50 sm:border-x border-slate-200 shadow-sm">
-        <header className="bg-white px-4 sm:px-6 py-3 flex justify-between items-center border-b border-slate-200 shadow-[0_2px_10px_rgba(0,0,0,0.02)] z-30">
+    <div className={`min-h-[100dvh] ${theme.bg} font-sans selection:bg-blue-200`}>
+      <div className="max-w-md sm:max-w-3xl lg:max-w-5xl mx-auto flex flex-col h-[100dvh] overflow-hidden bg-slate-50/50 sm:border-x border-slate-200 shadow-sm">
+        <header className="bg-white px-4 sm:px-6 py-3 flex justify-between items-center border-b border-slate-200 shadow-[0_2px_10px_rgba(0,0,0,0.02)] z-30 shrink-0">
           <div className="flex items-center gap-2">
             <div className="bg-blue-800 text-white p-1.5 rounded-lg shadow-sm"><Zap size={20} className="fill-white" /></div>
             <div className="text-xl sm:text-2xl font-black tracking-tight text-blue-900">MONEY<span className="text-blue-500">-POP</span></div>
