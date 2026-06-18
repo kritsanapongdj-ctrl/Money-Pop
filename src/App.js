@@ -110,7 +110,6 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
 
   const [formData, setFormData] = useState(() => {
     if (editingExpense) {
-      // ป้องกันยอดบวม: บังคับใช้ fullTotalAmount เป็นยอดตั้งต้นในฟอร์มเสมอ
       let fullAmt = parseFloat(editingExpense.fullTotalAmount) || parseFloat(editingExpense.totalAmount) || 0;
       if (editingExpense.paymentType === 'installment' && editingExpense.isMonthlyAmount && !editingExpense.fullTotalAmount) {
         fullAmt = parseFloat(editingExpense.totalAmount) * (parseInt(editingExpense.installmentMonths) || 1);
@@ -358,17 +357,23 @@ export default function App() {
 
   useEffect(() => { 
     fetchData(); 
-    const handleFocus = () => fetchData(true);
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, [fetchData]);
+  }, [fetchData]); // เอา window.addEventListener('focus') ออกเพื่อกันไม่ให้โหลดข้อมูลเก่ามาทับตอนมือถือสลับหน้า
 
   const updateDB = async (newDataFields) => {
     const updatedData = { ...dbData, ...newDataFields };
-    setDbData(updatedData); localStorage.setItem("moneyPopDB_Sheets", JSON.stringify(updatedData)); 
+    setDbData(updatedData); 
+    localStorage.setItem("moneyPopDB_Sheets", JSON.stringify(updatedData)); 
     if (!GAS_URL || GAS_URL.includes("ใส่_URL")) return;
     setIsSyncing(true);
-    try { await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(updatedData), headers: { 'Content-Type': 'text/plain;charset=utf-8' } }); } catch (e) { }
+    try { 
+      // เพิ่ม mode: 'no-cors' เพื่อไม่ให้เบราว์เซอร์บล็อกการยิง POST ไปหา Google Script
+      await fetch(GAS_URL, { 
+        method: 'POST', 
+        mode: 'no-cors', 
+        body: JSON.stringify(updatedData), 
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' } 
+      }); 
+    } catch (e) { console.error(e); }
     setIsSyncing(false);
   };
 
