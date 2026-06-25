@@ -98,7 +98,7 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
     if (formData.paymentType === 'installment') {
       const totalMonths = parseInt(formData.installmentMonths);
       if (!totalMonths || totalMonths < 2) return window.alert("ผ่อนชำระต้อง > 1 งวด");
-      const monthlyTotalAmount = amount / totalMonths; // ยอดรายเดือน
+      const monthlyTotalAmount = amount / totalMonths;
       let splitData = {};
       
       if (formData.payerType === 'split') {
@@ -200,11 +200,11 @@ export default function App() {
   const [savingsSource, setSavingsSource] = useState('');
   const [savingsType, setSavingsType] = useState('add');
 
-  // ฟังก์ชันดึงข้อมูลจาก Cloud พร้อมระบบป้องกันข้อมูลหาย (Sync Protection)
   const fetchData = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true);
     const localStr = localStorage.getItem("moneyPopDB_Sheets");
     const localData = localStr ? JSON.parse(localStr) : null;
+    const localTs = localData?.lastUpdated || 0; // จำเวลาของเครื่องไว้
 
     if (!GAS_URL) {
       if (localData) setDbData(localData);
@@ -216,48 +216,41 @@ export default function App() {
       if(!silent) setIsSyncing(true);
       const res = await fetch(`${GAS_URL}?t=${Date.now()}`, { cache: 'no-store' });
       const cloudData = await res.json();
+      const cloudTs = cloudData?.lastUpdated || 0; 
 
-      // 🛡️ SYNC PROTECTION (ตรวจสอบเวลา) 
-      // ถ้าข้อมูลในเครื่องคุณ "ใหม่กว่า" บน Cloud (เช่น เพิ่งบันทึกไปเมื่อกี้แต่เน็ตหลุด/ส่งไม่ติด)
-      if (localData && localData.lastUpdated && cloudData.lastUpdated) {
-        if (localData.lastUpdated > cloudData.lastUpdated) {
-          setDbData(localData); 
-          setIsLoading(false); setIsSyncing(false);
-          // บังคับยิงข้อมูลชุดใหม่ขึ้นคลาวด์อีกครั้งเงียบๆ
-          fetch(GAS_URL, { method: 'POST', redirect: 'follow', body: JSON.stringify(localData), headers: { 'Content-Type': 'text/plain;charset=utf-8' } }).catch(()=>{});
-          return;
-        }
-      }
-
-      // ถ้า Cloud ใหม่กว่า ก็อัปเดตลงเครื่องปกติ
-      if (cloudData && cloudData.expenses) {
-        setDbData(cloudData);
+      // 🛡️ BULLETPROOF SYNC PROTECTION
+      // ป้องกันเด็ดขาด: ถ้าข้อมูลในเครื่อง "ใหม่กว่า" ห้ามเอาคลาวด์มาทับเด็ดขาด!
+      if (localData && localTs > cloudTs) {
+        setDbData(localData); 
+        // ถ้าคลาวด์เก่ากว่า แปลว่ารอบก่อนบันทึกไม่สำเร็จ ให้แอบดันขึ้นไปใหม่เงียบๆ
+        fetch(GAS_URL, { method: 'POST', body: JSON.stringify(localData), headers: { 'Content-Type': 'text/plain;charset=utf-8' } }).catch(()=>{});
+      } else if (cloudData && cloudData.expenses) {
+        setDbData(cloudData); // คลาวด์ใหม่กว่า หรือเท่ากัน ให้ใช้คลาวด์
         localStorage.setItem("moneyPopDB_Sheets", JSON.stringify(cloudData)); 
       } else if (localData) {
-        setDbData(localData);
+        setDbData(localData); // เผื่อคลาวด์เอ๋อ
       }
     } catch (e) {
-      if (localData) setDbData(localData); // Offline fallback
+      if (localData) setDbData(localData); // ออฟไลน์
     }
     setIsLoading(false); setIsSyncing(false);
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // ฟังก์ชันบันทึกข้อมูลหลัก ที่เอาระบบป้องกัน CORS ออก เพื่อให้ได้ผลลัพธ์การบันทึกที่แท้จริง
   const updateDB = async (newDataFields, showSuccessToast = false) => {
     const ts = Date.now();
     const updatedData = { ...dbData, ...newDataFields, lastUpdated: ts };
+    
+    // 1. เซฟลงเครื่องทันทีก่อนเลย ป้องกันข้อมูลหาย
     setDbData(updatedData); 
     localStorage.setItem("moneyPopDB_Sheets", JSON.stringify(updatedData)); 
     
     if (!GAS_URL) return;
     setIsSyncing(true);
     try { 
-      // นำคำสั่ง mode: 'no-cors' ออก และเปลี่ยนเป็น text/plain แทนเพื่อหลีกเลี่ยงการถูก Block
       const response = await fetch(GAS_URL, { 
         method: 'POST', 
-        redirect: 'follow',
         body: JSON.stringify(updatedData), 
         headers: { 'Content-Type': 'text/plain;charset=utf-8' } 
       }); 
@@ -266,8 +259,7 @@ export default function App() {
         showToast("บันทึกข้อมูลขึ้นระบบคลาวด์สำเร็จแล้ว ☁️");
       }
     } catch (e) { 
-      console.error(e); 
-      showToast("⚠️ ข้อมูลถูกบันทึกไว้ในอุปกรณ์ แต่ส่งขึ้นคลาวด์ไม่สำเร็จ (จะลองใหม่ภายหลัง)");
+      showToast("บันทึกในเครื่องแล้ว แต่ยังส่งขึ้นคลาวด์ไม่ได้ (จะพยายามใหม่เมื่อ Refresh)");
     }
     setIsSyncing(false);
   };
