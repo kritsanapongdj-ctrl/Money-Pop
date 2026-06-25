@@ -15,17 +15,16 @@ const theme = {
 
 const formatCurrency = (amount) => new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(amount);
 
-// ฟังก์ชันคุมยอดให้เป็น "รายเดือน" เสมอ เพื่อไม่ให้แดชบอร์ดบวม
 const getDisplayAmount = (exp) => {
   let amt = parseFloat(exp.totalAmount) || 0;
-  if (exp.paymentType === 'installment' && !exp.isMonthlyAmount) return amt / (parseInt(exp.installmentMonths) || 1);
+  if (exp.paymentType === 'installment' && !exp.isMonthlyAmount && !exp.fullTotalAmount) return amt / (parseInt(exp.installmentMonths) || 1);
   return amt;
 };
 
 const getDisplaySplitAmount = (exp, mId) => {
   if (!exp.splitDetails || !exp.splitDetails[mId]) return 0;
   let amt = parseFloat(exp.splitDetails[mId].amount) || 0;
-  if (exp.paymentType === 'installment' && !exp.isMonthlyAmount) return amt / (parseInt(exp.installmentMonths) || 1);
+  if (exp.paymentType === 'installment' && !exp.isMonthlyAmount && !exp.fullTotalAmount) return amt / (parseInt(exp.installmentMonths) || 1);
   return amt;
 };
 
@@ -70,7 +69,6 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
   const { expenses, categories, sources, members, savings } = dbData;
   const [formData, setFormData] = useState(() => {
     if (editingExpense) {
-      // ดึงยอดเต็มมาใส่ฟอร์มเสมอ เพื่อป้องกันยอดบวมซ้ำซ้อนตอนแก้ไข
       let fullAmt = parseFloat(editingExpense.fullTotalAmount) || parseFloat(editingExpense.totalAmount) || 0;
       if (editingExpense.paymentType === 'installment' && editingExpense.isMonthlyAmount && !editingExpense.fullTotalAmount) {
         fullAmt = parseFloat(editingExpense.totalAmount) * (parseInt(editingExpense.installmentMonths) || 1);
@@ -110,10 +108,8 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
       }
 
       if (editingExpense) {
-        // แก้ไข: อัปเดตเฉพาะเดือนนี้
         generatedExpenses.push({ ...finalData, id: editingExpense.id, groupId: editingExpense.groupId || groupId, totalAmount: monthlyTotalAmount, isMonthlyAmount: true, fullTotalAmount: amount, splitDetails: formData.payerType === 'split' ? splitData : undefined, status: formData.payerType === 'split' ? (Object.values(splitData).every(v => v.paid) ? 'paid' : 'pending') : editingExpense.status });
       } else {
-        // เพิ่มใหม่: สร้างล่วงหน้าตามจำนวนงวด
         let [editYear, editMonth] = formData.month.split('-').map(Number);
         let baseMonth = editMonth - ((parseInt(formData.currentInstallment) || 1) - 1);
         let baseYear = editYear; while (baseMonth < 1) { baseMonth += 12; baseYear -= 1; }
@@ -191,7 +187,7 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [dbData, setDbData] = useState({ expenses: [], members: [], categories: [], sources: [], savings: { currentAmount: 0, transactions: [] } });
+  const [dbData, setDbData] = useState({ expenses: [], members: [], categories: [], sources: [], savings: { currentAmount: 0, transactions: [] }, lastUpdated: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [filters, setFilters] = useState({ month: new Date().toISOString().slice(0, 7), payer: '', category: '', source: '', paymentType: '' });
@@ -204,50 +200,74 @@ export default function App() {
   const [savingsSource, setSavingsSource] = useState('');
   const [savingsType, setSavingsType] = useState('add');
 
+  // ฟังก์ชันดึงข้อมูลจาก Cloud พร้อมระบบป้องกันข้อมูลหาย (Sync Protection)
   const fetchData = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true);
+    const localStr = localStorage.getItem("moneyPopDB_Sheets");
+    const localData = localStr ? JSON.parse(localStr) : null;
+
     if (!GAS_URL) {
-      const local = localStorage.getItem("moneyPopDB_Sheets");
-      if (local) setDbData(JSON.parse(local));
+      if (localData) setDbData(localData);
       if (!silent) setIsLoading(false);
       return;
     }
+    
     try {
       if(!silent) setIsSyncing(true);
       const res = await fetch(`${GAS_URL}?t=${Date.now()}`, { cache: 'no-store' });
-      const data = await res.json();
-      if (data && data.expenses) {
-        setDbData(data);
-        localStorage.setItem("moneyPopDB_Sheets", JSON.stringify(data)); 
+      const cloudData = await res.json();
+
+      // 🛡️ SYNC PROTECTION (ตรวจสอบเวลา) 
+      // ถ้าข้อมูลในเครื่องคุณ "ใหม่กว่า" บน Cloud (เช่น เพิ่งบันทึกไปเมื่อกี้แต่เน็ตหลุด/ส่งไม่ติด)
+      if (localData && localData.lastUpdated && cloudData.lastUpdated) {
+        if (localData.lastUpdated > cloudData.lastUpdated) {
+          setDbData(localData); 
+          setIsLoading(false); setIsSyncing(false);
+          // บังคับยิงข้อมูลชุดใหม่ขึ้นคลาวด์อีกครั้งเงียบๆ
+          fetch(GAS_URL, { method: 'POST', redirect: 'follow', body: JSON.stringify(localData), headers: { 'Content-Type': 'text/plain;charset=utf-8' } }).catch(()=>{});
+          return;
+        }
+      }
+
+      // ถ้า Cloud ใหม่กว่า ก็อัปเดตลงเครื่องปกติ
+      if (cloudData && cloudData.expenses) {
+        setDbData(cloudData);
+        localStorage.setItem("moneyPopDB_Sheets", JSON.stringify(cloudData)); 
+      } else if (localData) {
+        setDbData(localData);
       }
     } catch (e) {
-      const local = localStorage.getItem("moneyPopDB_Sheets");
-      if (local) setDbData(JSON.parse(local));
+      if (localData) setDbData(localData); // Offline fallback
     }
     setIsLoading(false); setIsSyncing(false);
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // ฟังก์ชันสำคัญ: ป้องกันข้อมูลหายด้วยการใส่ mode: 'no-cors' กลับเข้าไป ไม่ให้อ่านค่า return จะได้ไม่ crash
+  // ฟังก์ชันบันทึกข้อมูลหลัก ที่เอาระบบป้องกัน CORS ออก เพื่อให้ได้ผลลัพธ์การบันทึกที่แท้จริง
   const updateDB = async (newDataFields, showSuccessToast = false) => {
-    const updatedData = { ...dbData, ...newDataFields };
+    const ts = Date.now();
+    const updatedData = { ...dbData, ...newDataFields, lastUpdated: ts };
     setDbData(updatedData); 
     localStorage.setItem("moneyPopDB_Sheets", JSON.stringify(updatedData)); 
+    
     if (!GAS_URL) return;
     setIsSyncing(true);
     try { 
-      // ใส่ mode: 'no-cors' เพื่อให้ส่งข้ามโดเมนได้ 100% (แต่จะอ่าน res JSON ไม่ได้)
-      await fetch(GAS_URL, { 
+      // นำคำสั่ง mode: 'no-cors' ออก และเปลี่ยนเป็น text/plain แทนเพื่อหลีกเลี่ยงการถูก Block
+      const response = await fetch(GAS_URL, { 
         method: 'POST', 
-        mode: 'no-cors',
+        redirect: 'follow',
         body: JSON.stringify(updatedData), 
         headers: { 'Content-Type': 'text/plain;charset=utf-8' } 
       }); 
-      if(showSuccessToast) showToast("บันทึกข้อมูลขึ้นระบบคลาวด์สำเร็จแล้ว ☁️");
+      
+      if (response.ok && showSuccessToast) {
+        showToast("บันทึกข้อมูลขึ้นระบบคลาวด์สำเร็จแล้ว ☁️");
+      }
     } catch (e) { 
       console.error(e); 
-      showToast("⚠️ ไม่สามารถบันทึกขึ้น Cloud ได้ ข้อมูลเซฟไว้ในเครื่องชั่วคราว");
+      showToast("⚠️ ข้อมูลถูกบันทึกไว้ในอุปกรณ์ แต่ส่งขึ้นคลาวด์ไม่สำเร็จ (จะลองใหม่ภายหลัง)");
     }
     setIsSyncing(false);
   };
