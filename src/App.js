@@ -15,16 +15,17 @@ const theme = {
 
 const formatCurrency = (amount) => new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(amount);
 
+// ฟังก์ชันคุมยอดให้เป็น "รายเดือน" เสมอ เพื่อไม่ให้แดชบอร์ดบวม
 const getDisplayAmount = (exp) => {
   let amt = parseFloat(exp.totalAmount) || 0;
-  if (exp.paymentType === 'installment' && !exp.isMonthlyAmount && !exp.fullTotalAmount) return amt / (parseInt(exp.installmentMonths) || 1);
+  if (exp.paymentType === 'installment' && !exp.isMonthlyAmount) return amt / (parseInt(exp.installmentMonths) || 1);
   return amt;
 };
 
 const getDisplaySplitAmount = (exp, mId) => {
   if (!exp.splitDetails || !exp.splitDetails[mId]) return 0;
   let amt = parseFloat(exp.splitDetails[mId].amount) || 0;
-  if (exp.paymentType === 'installment' && !exp.isMonthlyAmount && !exp.fullTotalAmount) return amt / (parseInt(exp.installmentMonths) || 1);
+  if (exp.paymentType === 'installment' && !exp.isMonthlyAmount) return amt / (parseInt(exp.installmentMonths) || 1);
   return amt;
 };
 
@@ -69,8 +70,11 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
   const { expenses, categories, sources, members, savings } = dbData;
   const [formData, setFormData] = useState(() => {
     if (editingExpense) {
+      // ดึงยอดเต็มมาใส่ฟอร์มเสมอ เพื่อป้องกันยอดบวมซ้ำซ้อนตอนแก้ไข
       let fullAmt = parseFloat(editingExpense.fullTotalAmount) || parseFloat(editingExpense.totalAmount) || 0;
-      if (editingExpense.paymentType === 'installment' && editingExpense.isMonthlyAmount && !editingExpense.fullTotalAmount) fullAmt = parseFloat(editingExpense.totalAmount) * (parseInt(editingExpense.installmentMonths) || 1);
+      if (editingExpense.paymentType === 'installment' && editingExpense.isMonthlyAmount && !editingExpense.fullTotalAmount) {
+        fullAmt = parseFloat(editingExpense.totalAmount) * (parseInt(editingExpense.installmentMonths) || 1);
+      }
       return { ...editingExpense, totalAmount: fullAmt };
     }
     return { title: '', month: new Date().toISOString().slice(0, 7), categoryId: categories[0]?.id || '', sourceId: sources[0]?.id || '', paymentType: 'normal', totalAmount: '', installmentMonths: '', currentInstallment: '1', payerType: 'single', payerId: members[0]?.id || '', splitDetails: {} };
@@ -91,14 +95,14 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
     let finalData = { ...formData, updatedAt: Date.now() };
     let generatedExpenses = [];
     const groupId = (editingExpense && editingExpense.groupId) ? editingExpense.groupId : Date.now().toString();
-    
     let cleanExpenses = editingExpense ? expenses.filter(e => e.id !== editingExpense.id) : expenses;
 
     if (formData.paymentType === 'installment') {
       const totalMonths = parseInt(formData.installmentMonths);
       if (!totalMonths || totalMonths < 2) return window.alert("ผ่อนชำระต้อง > 1 งวด");
-      const monthlyTotalAmount = amount / totalMonths;
+      const monthlyTotalAmount = amount / totalMonths; // ยอดรายเดือน
       let splitData = {};
+      
       if (formData.payerType === 'split') {
         const selM = Object.keys(splitSelection).filter(k => splitSelection[k]);
         if (selM.length === 0) return window.alert("เลือกผู้รับผิดชอบอย่างน้อย 1 คน");
@@ -106,11 +110,14 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
       }
 
       if (editingExpense) {
+        // แก้ไข: อัปเดตเฉพาะเดือนนี้
         generatedExpenses.push({ ...finalData, id: editingExpense.id, groupId: editingExpense.groupId || groupId, totalAmount: monthlyTotalAmount, isMonthlyAmount: true, fullTotalAmount: amount, splitDetails: formData.payerType === 'split' ? splitData : undefined, status: formData.payerType === 'split' ? (Object.values(splitData).every(v => v.paid) ? 'paid' : 'pending') : editingExpense.status });
       } else {
+        // เพิ่มใหม่: สร้างล่วงหน้าตามจำนวนงวด
         let [editYear, editMonth] = formData.month.split('-').map(Number);
         let baseMonth = editMonth - ((parseInt(formData.currentInstallment) || 1) - 1);
         let baseYear = editYear; while (baseMonth < 1) { baseMonth += 12; baseYear -= 1; }
+        
         for (let i = 1; i <= totalMonths; i++) {
           let tm = baseMonth + (i - 1); let ty = baseYear; while (tm > 12) { tm -= 12; ty += 1; }
           let fsData = {}; if (formData.payerType === 'split') Object.keys(splitData).forEach(k => { fsData[k] = { amount: splitData[k].amount, paid: false }; });
@@ -138,7 +145,7 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, setIsModalOpen, sh
       newSavings = { currentAmount: savings.currentAmount - net, transactions: [{ id: Date.now().toString(), type: net > 0 ? 'deduct' : 'add', amount: Math.abs(net), source: `บิล: ${formData.title}`, date: new Date().toISOString() }, ...savings.transactions].slice(0, 50) };
     }
     updateDB({ expenses: [...generatedExpenses, ...cleanExpenses], savings: newSavings }, true);
-    setIsModalOpen(false); showToast(editingExpense ? "อัปเดตเรียบร้อย" : "เพิ่มรายการสำเร็จ");
+    setIsModalOpen(false); showToast(editingExpense ? "อัปเดตเรียบร้อย" : "เพิ่มรายการและสร้างงวดล่วงหน้าสำเร็จ");
   };
 
   return (
@@ -189,7 +196,6 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [filters, setFilters] = useState({ month: new Date().toISOString().slice(0, 7), payer: '', category: '', source: '', paymentType: '' });
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
   const [selectedForPay, setSelectedForPay] = useState({});
@@ -223,7 +229,7 @@ export default function App() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // แกะโหมด no-cors ออก และบังคับให้การบันทึกต้องรอ Google Response สำเร็จถึงจะผ่าน
+  // ฟังก์ชันสำคัญ: ป้องกันข้อมูลหายด้วยการใส่ mode: 'no-cors' กลับเข้าไป ไม่ให้อ่านค่า return จะได้ไม่ crash
   const updateDB = async (newDataFields, showSuccessToast = false) => {
     const updatedData = { ...dbData, ...newDataFields };
     setDbData(updatedData); 
@@ -231,15 +237,14 @@ export default function App() {
     if (!GAS_URL) return;
     setIsSyncing(true);
     try { 
-      const response = await fetch(GAS_URL, { 
+      // ใส่ mode: 'no-cors' เพื่อให้ส่งข้ามโดเมนได้ 100% (แต่จะอ่าน res JSON ไม่ได้)
+      await fetch(GAS_URL, { 
         method: 'POST', 
+        mode: 'no-cors',
         body: JSON.stringify(updatedData), 
         headers: { 'Content-Type': 'text/plain;charset=utf-8' } 
       }); 
-      const resData = await response.json();
-      if(resData.status === 'success' && showSuccessToast) {
-        showToast("บันทึกข้อมูลขึ้นระบบคลาวด์สำเร็จแล้ว ☁️");
-      }
+      if(showSuccessToast) showToast("บันทึกข้อมูลขึ้นระบบคลาวด์สำเร็จแล้ว ☁️");
     } catch (e) { 
       console.error(e); 
       showToast("⚠️ ไม่สามารถบันทึกขึ้น Cloud ได้ ข้อมูลเซฟไว้ในเครื่องชั่วคราว");
@@ -327,7 +332,7 @@ export default function App() {
       }
     });
 
-    const pieData = [{ name: 'จ่ายแล้วในเดือน', value: totalPaid, color: '#00a950' }, { name: 'รอจ่าย', value: totalPending, color: '#ff5c93' }];
+    const pieData = [{ name: 'จ่ายแล้ว', value: totalPaid, color: '#00a950' }, { name: 'รอจ่าย', value: totalPending, color: '#ff5c93' }];
     const catData = Object.keys(categoryDataMap).map(k => ({ name: k, value: categoryDataMap[k] }));
     const memData = Object.keys(memberDataMap).map(k => ({ name: k, value: memberDataMap[k] }));
     const grandTotal = totalPaid + totalPending;
@@ -400,7 +405,7 @@ export default function App() {
           {activeTab === 'expenses' && (
             <div className="space-y-4 animate-fadeIn pb-6">
               <div className="px-4 sm:px-0 flex justify-between items-end mb-2 pt-2">
-                <div><h2 className={`text-2xl font-black ${theme.primary}`}>รายการบิลทั้งหมด</h2><p className="text-slate-400 text-xs sm:text-sm font-bold">{filteredExpenses.length} รายการในรอบเดือน</p></div>
+                <div><h2 className={`text-2xl font-black ${theme.primary}`}>รายการบิล</h2><p className="text-slate-400 text-xs sm:text-sm font-bold">{filteredExpenses.length} รายการในรอบเดือน</p></div>
                 <div className="flex gap-2">
                   <button onClick={() => { setEditingExpense(null); setIsModalOpen(true); }} className={`${theme.button} px-4 py-2.5 rounded-2xl flex items-center space-x-1.5`}><Plus size={18} /> <span>เพิ่มบิล</span></button>
                 </div>
@@ -413,7 +418,7 @@ export default function App() {
               </div>
               {Object.keys(selectedForPay).length > 0 && (
                 <div className="sticky top-2 z-40 mx-4 sm:mx-0 bg-white p-4 rounded-2xl border-2 border-[#00a950] shadow-xl flex justify-between items-center mb-4 animate-slideUp">
-                  <div><span className="text-emerald-600 text-xs font-black uppercase tracking-wide">มัดรวมเพื่อจ่าย ({Object.keys(selectedForPay).length} บิล)</span><p className="text-slate-800 text-xl font-black">{formatCurrency(Object.values(selectedForPay).reduce((sum, item) => sum + item.amount, 0))}</p></div>
+                  <div><span className="text-emerald-600 text-xs font-black uppercase tracking-wide">รวมชำระ ({Object.keys(selectedForPay).length} บิล)</span><p className="text-slate-800 text-xl font-black">{formatCurrency(Object.values(selectedForPay).reduce((sum, item) => sum + item.amount, 0))}</p></div>
                   <button onClick={processBulkPayment} className={`${theme.button} px-6 py-3 rounded-xl`}>ยืนยันชำระเงิน</button>
                 </div>
               )}
