@@ -20,7 +20,7 @@ const theme = {
   chartColors: ['#1e40af', '#3b82f6', '#f59e0b', '#ec4899', '#10b981'] 
 };
 
-const formatCurrency = (amount) => new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(amount);
+const formatCurrency = (amount) => new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(parseFloat(amount) || 0);
 
 const getIconForCategory = (name) => {
   const n = (name || '').toLowerCase();
@@ -49,7 +49,7 @@ const ListManager = ({ title, data, updateDB, dataKey, icon: Icon, hasEmail }) =
         {data.map(item => (
           <div key={item.id} className="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100">
             <div><span className="font-bold text-sm text-slate-800">{item.name}</span> {item.email && <span className="block text-xs text-slate-400">{item.email}</span>}</div>
-            <button onClick={() => updateDB({ [dataKey]: data.filter(i => i.id !== item.id) })} className="text-slate-400 hover:text-red-500"><Trash2 size={18}/></button>
+            <button onClick={() => updateDB({ [dataKey]: data.filter(i => String(i.id) !== String(item.id)) })} className="text-slate-400 hover:text-red-500"><Trash2 size={18}/></button>
           </div>
         ))}
       </div>
@@ -58,10 +58,21 @@ const ListManager = ({ title, data, updateDB, dataKey, icon: Icon, hasEmail }) =
 };
 
 const ExpenseFormModal = ({ editingExpense, dbData, updateDB, close, showToast }) => {
-  const [formData, setFormData] = useState(editingExpense || {
-    title: '', month: new Date().toISOString().slice(0, 7), categoryId: dbData.categories[0]?.id || '', sourceId: dbData.sources[0]?.id || '',
-    paymentType: 'normal', totalAmount: '', installmentMonths: '', currentInstallment: '1', payerType: 'single', payerId: dbData.members[0]?.id || '', splitDetails: {}
+  const [formData, setFormData] = useState(() => {
+    if (editingExpense) {
+      // ป้องกันยอดเต็มบิลหายเมื่อแก้ไขรายการ
+      let fullAmt = parseFloat(editingExpense.fullTotalAmount) || parseFloat(editingExpense.totalAmount) || 0;
+      if (editingExpense.paymentType === 'installment' && editingExpense.isMonthlyAmount && !editingExpense.fullTotalAmount) {
+        fullAmt = parseFloat(editingExpense.totalAmount) * (parseInt(editingExpense.installmentMonths) || 1);
+      }
+      return { ...editingExpense, totalAmount: fullAmt };
+    }
+    return {
+      title: '', month: new Date().toISOString().slice(0, 7), categoryId: dbData.categories[0]?.id || '', sourceId: dbData.sources[0]?.id || '',
+      paymentType: 'normal', totalAmount: '', installmentMonths: '', currentInstallment: '1', payerType: 'single', payerId: dbData.members[0]?.id || '', splitDetails: {}
+    };
   });
+  
   const [splitSelection, setSplitSelection] = useState(() => editingExpense?.payerType === 'split' ? Object.keys(editingExpense.splitDetails).reduce((acc, id) => ({...acc, [id]: true}), {}) : {});
 
   const handleSubmit = (e) => {
@@ -69,7 +80,7 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, close, showToast }
     const amount = parseFloat(formData.totalAmount);
     if (isNaN(amount) || amount <= 0) return alert("ยอดเงินไม่ถูกต้อง");
 
-    let cleanExpenses = editingExpense ? dbData.expenses.filter(exp => editingExpense.groupId ? exp.groupId !== editingExpense.groupId : exp.id !== editingExpense.id) : dbData.expenses;
+    let cleanExpenses = editingExpense ? dbData.expenses.filter(exp => editingExpense.groupId ? String(exp.groupId) !== String(editingExpense.groupId) : String(exp.id) !== String(editingExpense.id)) : dbData.expenses;
     let newExpenses = [];
     const groupId = editingExpense?.groupId || Date.now().toString();
     const baseData = { ...formData, updatedAt: Date.now() };
@@ -120,7 +131,10 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, close, showToast }
         <div className="flex justify-between items-center mb-5"><h2 className={`text-xl font-bold ${theme.primary}`}>{editingExpense ? 'แก้ไขบิล' : 'เพิ่มบิลใหม่'}</h2><button onClick={close} className="text-slate-400"><X/></button></div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <input type="text" required value={formData.title} onChange={e=>setFormData({...formData, title: e.target.value})} className={theme.input} placeholder="ชื่อรายการ" />
-          <div className="grid grid-cols-2 gap-3"><input type="month" required value={formData.month} onChange={e=>setFormData({...formData, month: e.target.value})} className={theme.input} /><input type="number" required placeholder="ยอดรวมบิล" value={editingExpense?.paymentType==='installment' && !editingExpense.isMonthlyAmount ? editingExpense.totalAmount : (formData.fullTotalAmount || formData.totalAmount)} onChange={e=>setFormData({...formData, totalAmount: e.target.value})} className={theme.input} /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <input type="month" required value={formData.month} onChange={e=>setFormData({...formData, month: e.target.value})} className={theme.input} />
+            <input type="number" required placeholder="ยอดรวมบิล" value={formData.totalAmount} onChange={e=>setFormData({...formData, totalAmount: e.target.value})} className={theme.input} />
+          </div>
           <div className="grid grid-cols-2 gap-3"><select value={formData.categoryId} onChange={e=>setFormData({...formData, categoryId: e.target.value})} className={theme.input} required><option value="">หมวดหมู่...</option>{dbData.categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select><select value={formData.sourceId} onChange={e=>setFormData({...formData, sourceId: e.target.value})} className={theme.input} required><option value="">จ่ายจาก...</option>{dbData.sources.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
           <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
             <div className="flex gap-4 mb-2"><label className="flex items-center text-sm font-medium"><input type="radio" value="normal" checked={formData.paymentType==='normal'} onChange={()=>setFormData({...formData, paymentType:'normal'})} className="mr-2"/> จ่ายเต็ม</label><label className="flex items-center text-sm font-medium"><input type="radio" value="installment" checked={formData.paymentType==='installment'} onChange={()=>setFormData({...formData, paymentType:'installment'})} className="mr-2"/> ผ่อนชำระ</label></div>
@@ -162,7 +176,7 @@ export default function App() {
 
   useEffect(() => { 
     fetchData(); 
-    const onFocus = () => fetchData(true); // Auto-Sync เมื่อเปิดแอป
+    const onFocus = () => fetchData(true);
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
   }, [fetchData]);
@@ -177,7 +191,6 @@ export default function App() {
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
-  // --- [เริ่ม] ฟังก์ชันระบบ Backup ---
   const handleExportData = () => {
     const dataStr = JSON.stringify(dbData, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
@@ -215,24 +228,37 @@ export default function App() {
     reader.readAsText(file);
     event.target.value = null; 
   };
-  // --- [จบ] ฟังก์ชันระบบ Backup ---
 
-  const filteredExps = useMemo(() => dbData.expenses.filter(exp => (!filters.month || exp.month === filters.month) && (!filters.category || exp.categoryId === filters.category) && (!filters.payer || (exp.payerType === 'single' ? exp.payerId === filters.payer : exp.splitDetails?.[filters.payer]))), [dbData.expenses, filters]);
+  // กรองข้อมูลโดยเปรียบเทียบเป็น String เสมอ เพื่อป้องกันข้อผิดพลาดจากประเภทข้อมูล
+  const filteredExps = useMemo(() => dbData.expenses.filter(exp => 
+    (!filters.month || exp.month === filters.month) && 
+    (!filters.category || String(exp.categoryId) === String(filters.category)) && 
+    (!filters.payer || (exp.payerType === 'single' ? String(exp.payerId) === String(filters.payer) : exp.splitDetails?.[filters.payer]))
+  ), [dbData.expenses, filters]);
 
   const togglePay = (exp) => {
-    if (selectedForPay[exp.id]) { const n = {...selectedForPay}; delete n[exp.id]; setSelectedForPay(n); }
+    if (selectedForPay[exp.id]) { 
+      const n = {...selectedForPay}; delete n[exp.id]; setSelectedForPay(n); 
+    }
     else {
-      if (exp.payerType === 'single') setSelectedForPay({...selectedForPay, [exp.id]: { amount: exp.totalAmount, type: 'single' }});
+      if (exp.payerType === 'single') setSelectedForPay({...selectedForPay, [exp.id]: { amount: parseFloat(exp.totalAmount) || 0, type: 'single' }});
       else {
-        const unpaid = Object.keys(exp.splitDetails).filter(id => !exp.splitDetails[id].paid);
-        if (unpaid.length > 0) setSplitModal({ open: true, expId: exp.id, exp, sel: unpaid.length === 1 ? unpaid : [], avail: unpaid });
+        if (filters.payer) {
+           // ถ้าระบุตัวผู้จ่ายไว้แล้ว ให้ติ๊กเลือกจ่ายได้เลย ไม่ต้องเด้ง Modal ควานหา
+           if (!exp.splitDetails[filters.payer]?.paid) {
+             setSelectedForPay({...selectedForPay, [exp.id]: { amount: parseFloat(exp.splitDetails[filters.payer].amount) || 0, type: 'split', ids: [filters.payer] }});
+           }
+        } else {
+          const unpaid = Object.keys(exp.splitDetails).filter(id => !exp.splitDetails[id].paid);
+          if (unpaid.length > 0) setSplitModal({ open: true, expId: exp.id, exp, sel: unpaid.length === 1 ? unpaid : [], avail: unpaid });
+        }
       }
     }
   };
 
   const confirmSplitPay = () => {
     if(splitModal.sel.length === 0) return;
-    const amt = splitModal.sel.reduce((sum, id) => sum + splitModal.exp.splitDetails[id].amount, 0);
+    const amt = splitModal.sel.reduce((sum, id) => sum + (parseFloat(splitModal.exp.splitDetails[id].amount) || 0), 0);
     setSelectedForPay({...selectedForPay, [splitModal.expId]: { amount: amt, type: 'split', ids: splitModal.sel }});
     setSplitModal({ open: false });
   };
@@ -242,7 +268,12 @@ export default function App() {
       if (!selectedForPay[e.id]) return e;
       const pd = selectedForPay[e.id]; const ne = {...e};
       if (pd.type === 'single') ne.status = 'paid';
-      else { const ns = {...ne.splitDetails}; pd.ids.forEach(id => ns[id].paid = true); ne.splitDetails = ns; ne.status = Object.values(ns).every(v=>v.paid) ? 'paid' : 'pending'; }
+      else { 
+        const ns = {...ne.splitDetails}; 
+        pd.ids.forEach(id => { if (ns[id]) ns[id].paid = true; }); 
+        ne.splitDetails = ns; 
+        ne.status = Object.values(ns).every(v=>v.paid) ? 'paid' : 'pending'; 
+      }
       return ne;
     });
     updateDB({ expenses: newExps }); setSelectedForPay({}); showToast("ชำระเงินเรียบร้อย");
@@ -268,16 +299,26 @@ export default function App() {
           {tab === 'dashboard' && (() => {
             let tPaid = 0, tPend = 0; const cMap = {}, mMap = {};
             filteredExps.forEach(e => {
-              const cat = dbData.categories.find(c=>c.id===e.categoryId)?.name || 'อื่นๆ';
+              const cat = dbData.categories.find(c=>String(c.id)===String(e.categoryId))?.name || 'อื่นๆ';
               if (e.payerType === 'single') {
-                if(filters.payer && e.payerId !== filters.payer) return;
-                const a = e.totalAmount; e.status === 'paid' ? tPaid+=a : tPend+=a; cMap[cat]=(cMap[cat]||0)+a;
-                if(!filters.payer) mMap[dbData.members.find(m=>m.id===e.payerId)?.name||'ไม่ระบุ']=(mMap[dbData.members.find(m=>m.id===e.payerId)?.name||'ไม่ระบุ']||0)+a;
+                if(filters.payer && String(e.payerId) !== String(filters.payer)) return;
+                const a = parseFloat(e.totalAmount) || 0; 
+                e.status === 'paid' ? tPaid+=a : tPend+=a; 
+                cMap[cat]=(cMap[cat]||0)+a;
+                if(!filters.payer) {
+                  const mName = dbData.members.find(m=>String(m.id)===String(e.payerId))?.name||'ไม่ระบุ';
+                  mMap[mName] = (mMap[mName]||0)+a;
+                }
               } else {
                 Object.entries(e.splitDetails).forEach(([id, d]) => {
-                  if(filters.payer && id !== filters.payer) return;
-                  const a = d.amount; d.paid ? tPaid+=a : tPend+=a; cMap[cat]=(cMap[cat]||0)+a;
-                  if(!filters.payer) mMap[dbData.members.find(m=>m.id===id)?.name||'ไม่ระบุ']=(mMap[dbData.members.find(m=>m.id===id)?.name||'ไม่ระบุ']||0)+a;
+                  if(filters.payer && String(id) !== String(filters.payer)) return;
+                  const a = parseFloat(d.amount) || 0; 
+                  d.paid ? tPaid+=a : tPend+=a; 
+                  cMap[cat]=(cMap[cat]||0)+a;
+                  if(!filters.payer) {
+                    const mName = dbData.members.find(m=>String(m.id)===String(id))?.name||'ไม่ระบุ';
+                    mMap[mName] = (mMap[mName]||0)+a;
+                  }
                 });
               }
             });
@@ -299,14 +340,19 @@ export default function App() {
           {tab === 'expenses' && (
             <div className="px-4 sm:px-0">
               <div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-blue-800">รายการบิลทั้งหมด</h2><button onClick={() => setModal({open:true, edit:null})} className={`${theme.button} px-4 py-2 flex items-center text-sm`}><Plus size={16} className="mr-1"/>เพิ่มบิล</button></div>
-              {Object.keys(selectedForPay).length > 0 && <div className="sticky top-16 z-10 bg-white p-4 rounded-xl border-2 border-blue-500 shadow-md flex justify-between items-center mb-4 animate-fadeIn"><div><span className="text-blue-600 text-xs font-bold">เลือกชำระ {Object.keys(selectedForPay).length} รายการ</span><p className="text-blue-900 text-xl font-black">{formatCurrency(Object.values(selectedForPay).reduce((s,i)=>s+i.amount,0))}</p></div><button onClick={bulkPay} className={`${theme.button} px-5 py-2`}>ยืนยันชำระ</button></div>}
+              {Object.keys(selectedForPay).length > 0 && <div className="sticky top-16 z-10 bg-white p-4 rounded-xl border-2 border-blue-500 shadow-md flex justify-between items-center mb-4 animate-fadeIn"><div><span className="text-blue-600 text-xs font-bold">เลือกชำระ {Object.keys(selectedForPay).length} รายการ</span><p className="text-blue-900 text-xl font-black">{formatCurrency(Object.values(selectedForPay).reduce((s,i)=>s+(parseFloat(i.amount)||0),0))}</p></div><button onClick={bulkPay} className={`${theme.button} px-5 py-2`}>ยืนยันชำระ</button></div>}
               <div className="space-y-3">
                 {filteredExps.map(e => {
-                  const cat = dbData.categories.find(c=>c.id===e.categoryId);
-                  let amt = e.totalAmount, st = e.status, isPart = false;
+                  const cat = dbData.categories.find(c=>String(c.id)===String(e.categoryId));
+                  let amt = parseFloat(e.totalAmount) || 0;
+                  let st = e.status, isPart = false;
                   if (e.payerType === 'split') {
-                    if (filters.payer) { amt = e.splitDetails[filters.payer].amount; st = e.splitDetails[filters.payer].paid ? 'paid' : 'pending'; }
-                    else { isPart = Object.values(e.splitDetails).some(v=>v.paid) && !Object.values(e.splitDetails).every(v=>v.paid); }
+                    if (filters.payer) { 
+                      amt = parseFloat(e.splitDetails[filters.payer]?.amount) || 0; 
+                      st = e.splitDetails[filters.payer]?.paid ? 'paid' : 'pending'; 
+                    } else { 
+                      isPart = Object.values(e.splitDetails).some(v=>v.paid) && !Object.values(e.splitDetails).every(v=>v.paid); 
+                    }
                   }
                   const isPd = st === 'paid';
                   return (
@@ -316,7 +362,13 @@ export default function App() {
                         <div className="p-2 bg-slate-100 rounded-lg mr-3">{getIconForCategory(cat?.name)}</div>
                         <div className="truncate">
                           <h3 className={`font-bold text-sm truncate ${isPd?'line-through':''}`}>{e.title} {e.paymentType==='installment' && <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 rounded-full ml-1">{e.currentInstallment}/{e.installmentMonths}</span>}</h3>
-                          <p className="text-xs text-slate-500 truncate">{cat?.name} • {e.payerType==='split'&&!filters.payer?`หาร ${Object.keys(e.splitDetails).length} คน`:dbData.members.find(m=>m.id===e.payerId)?.name}</p>
+                          <p className="text-xs text-slate-500 truncate">
+                            {cat?.name} • {
+                              e.payerType === 'split' 
+                                ? (!filters.payer ? `หาร ${Object.keys(e.splitDetails).length} คน` : dbData.members.find(m => String(m.id) === String(filters.payer))?.name)
+                                : dbData.members.find(m => String(m.id) === String(e.payerId))?.name
+                            }
+                          </p>
                         </div>
                       </div>
                       <div className="flex flex-col items-end text-right">
@@ -324,7 +376,7 @@ export default function App() {
                         <div className="flex items-center gap-2 mt-1">
                           {isPd ? <span className="text-[10px] text-emerald-600 font-bold">ชำระแล้ว</span> : <span className="text-[10px] text-rose-500 font-bold">รอชำระ</span>}
                           <button onClick={() => setModal({open:true, edit:e})} className="text-slate-400 hover:text-blue-600"><Edit size={14}/></button>
-                          <button onClick={() => { if(window.confirm('ลบบิลนี้?')) updateDB({expenses: dbData.expenses.filter(x=>e.groupId?x.groupId!==e.groupId:x.id!==e.id)}); }} className="text-slate-400 hover:text-rose-600"><Trash2 size={14}/></button>
+                          <button onClick={() => { if(window.confirm('ลบบิลนี้?')) updateDB({expenses: dbData.expenses.filter(x=>e.groupId?String(x.groupId)!==String(e.groupId):String(x.id)!==String(e.id))}); }} className="text-slate-400 hover:text-rose-600"><Trash2 size={14}/></button>
                         </div>
                       </div>
                     </div>
@@ -337,8 +389,6 @@ export default function App() {
           {tab === 'settings' && (
             <div className="px-4 sm:px-0 space-y-4">
               <h2 className="text-xl font-bold text-blue-800 mb-2">ตั้งค่าแอป</h2>
-
-              {/* --- กล่องระบบจัดการข้อมูล (Backup) --- */}
               <div className={`${theme.card} p-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100`}>
                 <h3 className={`font-bold text-blue-900 mb-3 flex items-center`}><Zap size={18} className="mr-2 text-yellow-500"/>ระบบจัดการข้อมูล (Backup)</h3>
                 <div className="grid grid-cols-2 gap-3">
@@ -376,7 +426,17 @@ export default function App() {
         <div className="fixed inset-0 bg-slate-900/50 z-[110] flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-sm rounded-2xl p-6">
              <h3 className="text-lg font-bold text-blue-800 mb-4">เลือกผู้จ่าย</h3>
-             <div className="space-y-2 mb-4">{splitModal.avail.map(id => <label key={id} className="flex justify-between items-center p-3 border rounded-xl"><div className="flex items-center"><input type="checkbox" checked={splitModal.sel.includes(id)} onChange={e=>setSplitModal(s=>({...s, sel: e.target.checked?[...s.sel, id]:s.sel.filter(i=>i!==id)}))} className="mr-3" /><span>{dbData.members.find(m=>m.id===id)?.name}</span></div><span className="font-bold text-blue-600">{formatCurrency(splitModal.exp.splitDetails[id].amount)}</span></label>)}</div>
+             <div className="space-y-2 mb-4">
+               {splitModal.avail.map(id => 
+                 <label key={id} className="flex justify-between items-center p-3 border rounded-xl">
+                   <div className="flex items-center">
+                     <input type="checkbox" checked={splitModal.sel.includes(id)} onChange={e=>setSplitModal(s=>({...s, sel: e.target.checked?[...s.sel, id]:s.sel.filter(i=>i!==id)}))} className="mr-3" />
+                     <span>{dbData.members.find(m=>String(m.id)===String(id))?.name}</span>
+                   </div>
+                   <span className="font-bold text-blue-600">{formatCurrency(parseFloat(splitModal.exp.splitDetails[id].amount) || 0)}</span>
+                 </label>
+               )}
+             </div>
              <div className="flex gap-2"><button onClick={()=>setSplitModal({open:false})} className="flex-1 py-2 bg-slate-100 rounded-xl font-bold">ยกเลิก</button><button onClick={confirmSplitPay} className={`${theme.button} flex-1 py-2`}>ยืนยัน</button></div>
           </div>
         </div>
