@@ -114,9 +114,14 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, close, showToast }
       if (formData.payerType === 'split') {
         const sel = Object.keys(splitSelection).filter(k => splitSelection[k]);
         if (sel.length === 0) return alert("เลือกผู้จ่ายอย่างน้อย 1 คน");
-        const splitData = {}; sel.forEach(id => splitData[id] = { amount: amount / sel.length, paid: editingExpense?.splitDetails?.[id]?.paid || false });
+        const splitData = {}; sel.forEach(id => splitData[id] = { amount: amount / sel.length, paid: editingExpense?.splitDetails?.[id]?.paid || false, paidMonth: editingExpense?.splitDetails?.[id]?.paidMonth || null, paidAt: editingExpense?.splitDetails?.[id]?.paidAt || null });
         baseData.splitDetails = splitData; baseData.status = Object.values(splitData).every(v => v.paid) ? 'paid' : 'pending'; delete baseData.payerId;
-      } else { baseData.status = editingExpense?.status || 'pending'; delete baseData.splitDetails; }
+      } else { 
+        baseData.status = editingExpense?.status || 'pending'; 
+        baseData.paidMonth = editingExpense?.paidMonth || null;
+        baseData.paidAt = editingExpense?.paidAt || null;
+        delete baseData.splitDetails; 
+      }
       baseData.id = editingExpense?.id || Date.now().toString(); baseData.createdAt = editingExpense?.createdAt || Date.now();
       newExpenses.push(baseData);
     }
@@ -230,11 +235,20 @@ export default function App() {
   };
 
   // กรองข้อมูลโดยเปรียบเทียบเป็น String เสมอ เพื่อป้องกันข้อผิดพลาดจากประเภทข้อมูล
-  const filteredExps = useMemo(() => dbData.expenses.filter(exp => 
-    (!filters.month || exp.month === filters.month) && 
-    (!filters.category || String(exp.categoryId) === String(filters.category)) && 
-    (!filters.payer || (exp.payerType === 'single' ? String(exp.payerId) === String(filters.payer) : exp.splitDetails?.[filters.payer]))
-  ), [dbData.expenses, filters]);
+  const filteredExps = useMemo(() => dbData.expenses.filter(exp => {
+    if (filters.category && String(exp.categoryId) !== String(filters.category)) return false;
+    if (filters.payer && (exp.payerType === 'single' ? String(exp.payerId) !== String(filters.payer) : !exp.splitDetails?.[filters.payer])) return false;
+    
+    if (!filters.month || exp.month === filters.month) return true;
+    if (exp.month < filters.month) {
+      if (exp.payerType === 'single') {
+        return !exp.paidMonth || exp.paidMonth >= filters.month;
+      } else {
+        return Object.values(exp.splitDetails).some(d => !d.paidMonth || d.paidMonth >= filters.month);
+      }
+    }
+    return false;
+  }), [dbData.expenses, filters]);
 
   const togglePay = (exp) => {
     if (selectedForPay[exp.id]) { 
@@ -264,13 +278,18 @@ export default function App() {
   };
 
   const bulkPay = () => {
+    const pMonth = filters.month || new Date().toISOString().slice(0, 7);
+    const pAt = Date.now();
     const newExps = dbData.expenses.map(e => {
       if (!selectedForPay[e.id]) return e;
       const pd = selectedForPay[e.id]; const ne = {...e};
-      if (pd.type === 'single') ne.status = 'paid';
-      else { 
+      if (pd.type === 'single') {
+        ne.status = 'paid'; ne.paidMonth = pMonth; ne.paidAt = pAt;
+      } else { 
         const ns = {...ne.splitDetails}; 
-        pd.ids.forEach(id => { if (ns[id]) ns[id].paid = true; }); 
+        pd.ids.forEach(id => { 
+          if (ns[id]) { ns[id].paid = true; ns[id].paidMonth = pMonth; ns[id].paidAt = pAt; }
+        }); 
         ne.splitDetails = ns; 
         ne.status = Object.values(ns).every(v=>v.paid) ? 'paid' : 'pending'; 
       }
@@ -302,20 +321,24 @@ export default function App() {
               const cat = dbData.categories.find(c=>String(c.id)===String(e.categoryId))?.name || 'อื่นๆ';
               if (e.payerType === 'single') {
                 if(filters.payer && String(e.payerId) !== String(filters.payer)) return;
+                let isPaidInView = filters.month ? (e.paidMonth === filters.month) : (e.status === 'paid');
+                let isPendInView = filters.month ? (!e.paidMonth || e.paidMonth > filters.month) : (e.status !== 'paid');
                 const a = parseFloat(e.totalAmount) || 0; 
-                e.status === 'paid' ? tPaid+=a : tPend+=a; 
-                cMap[cat]=(cMap[cat]||0)+a;
-                if(!filters.payer) {
+                if (isPaidInView) { tPaid += a; cMap[cat] = (cMap[cat]||0)+a; }
+                else if (isPendInView) { tPend += a; cMap[cat] = (cMap[cat]||0)+a; }
+                if(!filters.payer && (isPaidInView || isPendInView)) {
                   const mName = dbData.members.find(m=>String(m.id)===String(e.payerId))?.name||'ไม่ระบุ';
                   mMap[mName] = (mMap[mName]||0)+a;
                 }
               } else {
                 Object.entries(e.splitDetails).forEach(([id, d]) => {
                   if(filters.payer && String(id) !== String(filters.payer)) return;
+                  let isPaidInView = filters.month ? (d.paidMonth === filters.month) : d.paid;
+                  let isPendInView = filters.month ? (!d.paidMonth || d.paidMonth > filters.month) : !d.paid;
                   const a = parseFloat(d.amount) || 0; 
-                  d.paid ? tPaid+=a : tPend+=a; 
-                  cMap[cat]=(cMap[cat]||0)+a;
-                  if(!filters.payer) {
+                  if (isPaidInView) { tPaid += a; cMap[cat] = (cMap[cat]||0)+a; }
+                  else if (isPendInView) { tPend += a; cMap[cat] = (cMap[cat]||0)+a; }
+                  if(!filters.payer && (isPaidInView || isPendInView)) {
                     const mName = dbData.members.find(m=>String(m.id)===String(id))?.name||'ไม่ระบุ';
                     mMap[mName] = (mMap[mName]||0)+a;
                   }
@@ -349,23 +372,30 @@ export default function App() {
                 {filteredExps.map(e => {
                   const cat = dbData.categories.find(c=>String(c.id)===String(e.categoryId));
                   let amt = parseFloat(e.totalAmount) || 0;
-                  let st = e.status, isPart = false;
+                  let st = e.status, isPart = false, pMonth = e.paidMonth;
                   if (e.payerType === 'split') {
                     if (filters.payer) { 
                       amt = parseFloat(e.splitDetails[filters.payer]?.amount) || 0; 
                       st = e.splitDetails[filters.payer]?.paid ? 'paid' : 'pending'; 
+                      pMonth = e.splitDetails[filters.payer]?.paidMonth;
                     } else { 
                       isPart = Object.values(e.splitDetails).some(v=>v.paid) && !Object.values(e.splitDetails).every(v=>v.paid); 
+                      pMonth = Object.values(e.splitDetails).map(v=>v.paidMonth).sort().reverse()[0];
                     }
                   }
-                  const isPd = st === 'paid';
+                  const isPd = filters.month ? (st === 'paid' && pMonth === filters.month) : (st === 'paid');
                   return (
                     <div key={e.id} className={`${theme.card} p-4 flex justify-between items-center transition-all ${isPd?'opacity-50 grayscale-[50%]':selectedForPay[e.id]?'ring-2 ring-cyan-400 bg-cyan-900/10 shadow-[0_0_15px_rgba(6,182,212,0.15)]':'hover:border-slate-700'}`}>
                       <div className="flex items-center w-2/3">
-                        {!isPd && <input type="checkbox" checked={!!selectedForPay[e.id]} onChange={()=>togglePay(e)} className="w-5 h-5 mr-3 accent-cyan-500 rounded bg-[#0B0F19] border-slate-700" />}
+                        {st !== 'paid' && <input type="checkbox" checked={!!selectedForPay[e.id]} onChange={()=>togglePay(e)} className="w-5 h-5 mr-3 accent-cyan-500 rounded bg-[#0B0F19] border-slate-700" />}
                         <div className={`p-2 rounded-xl mr-3 shadow-inner ${isPd ? 'bg-slate-800/50' : 'bg-[#0B0F19] border border-slate-800'}`}>{getIconForCategory(cat?.name)}</div>
                         <div className="truncate">
-                          <h3 className={`font-bold text-sm truncate text-slate-200 ${isPd?'line-through text-slate-500':''}`}>{e.title} {e.paymentType==='installment' && <span className="text-[10px] bg-pink-950/50 text-pink-400 border border-pink-900/50 px-2 rounded-full ml-1">{e.currentInstallment}/{e.installmentMonths}</span>}</h3>
+                          <h3 className={`font-bold text-sm truncate text-slate-200 ${isPd?'line-through text-slate-500':''}`}>
+                            {e.title} {e.paymentType==='installment' && <span className="text-[10px] bg-pink-950/50 text-pink-400 border border-pink-900/50 px-2 rounded-full ml-1">{e.currentInstallment}/{e.installmentMonths}</span>}
+                            {filters.month && e.month < filters.month && !isPd && <span className="ml-2 text-[10px] bg-pink-900/40 text-pink-400 px-1.5 py-0.5 rounded border border-pink-700/50">ค้างชำระจาก {e.month}</span>}
+                            {filters.month && e.month < filters.month && isPd && <span className="ml-2 text-[10px] bg-emerald-900/40 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-700/50">ชำระแล้ว (จาก {e.month})</span>}
+                            {filters.month && e.month === filters.month && pMonth && pMonth > filters.month && <span className="ml-2 text-[10px] bg-amber-900/40 text-amber-400 px-1.5 py-0.5 rounded border border-amber-700/50">ชำระล่าช้า ({pMonth})</span>}
+                          </h3>
                           <p className="text-xs text-slate-500 truncate">
                             {cat?.name} • {
                               e.payerType === 'split' 
