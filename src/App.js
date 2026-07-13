@@ -241,6 +241,7 @@ export default function App() {
     
     if (!filters.month || exp.month === filters.month) return true;
     if (exp.month < filters.month) {
+      if (exp.month < '2026-06') return false; // ป้องกันการยกยอดข้อมูลเก่าก่อนเดือน 06/2026
       if (exp.payerType === 'single') {
         return !exp.paidMonth || exp.paidMonth >= filters.month;
       } else {
