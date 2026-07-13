@@ -243,9 +243,13 @@ export default function App() {
     if (exp.month < filters.month) {
       if (exp.month < '2026-06') return false; // ป้องกันการยกยอดข้อมูลเก่าก่อนเดือน 06/2026
       if (exp.payerType === 'single') {
-        return !exp.paidMonth || exp.paidMonth >= filters.month;
+        const pMonth = (exp.status === 'paid' && !exp.paidMonth) ? exp.month : exp.paidMonth;
+        return !pMonth || pMonth >= filters.month;
       } else {
-        return Object.values(exp.splitDetails).some(d => !d.paidMonth || d.paidMonth >= filters.month);
+        return Object.values(exp.splitDetails).some(d => {
+          const pMonth = (d.paid && !d.paidMonth) ? exp.month : d.paidMonth;
+          return !pMonth || pMonth >= filters.month;
+        });
       }
     }
     return false;
@@ -322,8 +326,9 @@ export default function App() {
               const cat = dbData.categories.find(c=>String(c.id)===String(e.categoryId))?.name || 'อื่นๆ';
               if (e.payerType === 'single') {
                 if(filters.payer && String(e.payerId) !== String(filters.payer)) return;
-                let isPaidInView = filters.month ? (e.paidMonth === filters.month) : (e.status === 'paid');
-                let isPendInView = filters.month ? (!e.paidMonth || e.paidMonth > filters.month) : (e.status !== 'paid');
+                const effectivePaidMonth = (e.status === 'paid' && !e.paidMonth) ? e.month : e.paidMonth;
+                let isPaidInView = filters.month ? (effectivePaidMonth === filters.month) : (e.status === 'paid');
+                let isPendInView = filters.month ? (!effectivePaidMonth || effectivePaidMonth > filters.month) : (e.status !== 'paid');
                 const a = parseFloat(e.totalAmount) || 0; 
                 if (isPaidInView) { tPaid += a; cMap[cat] = (cMap[cat]||0)+a; }
                 else if (isPendInView) { tPend += a; cMap[cat] = (cMap[cat]||0)+a; }
@@ -334,8 +339,9 @@ export default function App() {
               } else {
                 Object.entries(e.splitDetails).forEach(([id, d]) => {
                   if(filters.payer && String(id) !== String(filters.payer)) return;
-                  let isPaidInView = filters.month ? (d.paidMonth === filters.month) : d.paid;
-                  let isPendInView = filters.month ? (!d.paidMonth || d.paidMonth > filters.month) : !d.paid;
+                  const effectivePaidMonth = (d.paid && !d.paidMonth) ? e.month : d.paidMonth;
+                  let isPaidInView = filters.month ? (effectivePaidMonth === filters.month) : d.paid;
+                  let isPendInView = filters.month ? (!effectivePaidMonth || effectivePaidMonth > filters.month) : !d.paid;
                   const a = parseFloat(d.amount) || 0; 
                   if (isPaidInView) { tPaid += a; cMap[cat] = (cMap[cat]||0)+a; }
                   else if (isPendInView) { tPend += a; cMap[cat] = (cMap[cat]||0)+a; }
@@ -373,15 +379,15 @@ export default function App() {
                 {filteredExps.map(e => {
                   const cat = dbData.categories.find(c=>String(c.id)===String(e.categoryId));
                   let amt = parseFloat(e.totalAmount) || 0;
-                  let st = e.status, isPart = false, pMonth = e.paidMonth;
+                  let st = e.status, isPart = false, pMonth = (e.status === 'paid' && !e.paidMonth) ? e.month : e.paidMonth;
                   if (e.payerType === 'split') {
                     if (filters.payer) { 
                       amt = parseFloat(e.splitDetails[filters.payer]?.amount) || 0; 
                       st = e.splitDetails[filters.payer]?.paid ? 'paid' : 'pending'; 
-                      pMonth = e.splitDetails[filters.payer]?.paidMonth;
+                      pMonth = (e.splitDetails[filters.payer]?.paid && !e.splitDetails[filters.payer]?.paidMonth) ? e.month : e.splitDetails[filters.payer]?.paidMonth;
                     } else { 
                       isPart = Object.values(e.splitDetails).some(v=>v.paid) && !Object.values(e.splitDetails).every(v=>v.paid); 
-                      pMonth = Object.values(e.splitDetails).map(v=>v.paidMonth).sort().reverse()[0];
+                      pMonth = Object.values(e.splitDetails).map(v=> (v.paid && !v.paidMonth) ? e.month : v.paidMonth).sort().reverse()[0];
                     }
                   }
                   const isPd = filters.month ? (st === 'paid' && pMonth === filters.month) : (st === 'paid');
