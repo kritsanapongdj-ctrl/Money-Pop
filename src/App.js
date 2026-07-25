@@ -102,11 +102,25 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, close, showToast }
 
       for (let i = 1; i <= tMonths; i++) {
         let tm = bMonth + i - 1; let ty = bYear; while (tm > 12) { tm -= 12; ty += 1; }
+        const isPast = i < parseInt(formData.currentInstallment);
+        const thisMonth = `${ty}-${String(tm).padStart(2, '0')}`;
+        let splitDataCopy = undefined;
+        if (formData.payerType === 'split') {
+           splitDataCopy = {};
+           Object.keys(splitData).forEach(id => {
+               splitDataCopy[id] = { ...splitData[id], paid: isPast, paidMonth: isPast ? thisMonth : null, paidAt: isPast ? Date.now() : null };
+           });
+        }
+
         newExpenses.push({
-          ...baseData, id: `${groupId}-${i}`, groupId, month: `${ty}-${String(tm).padStart(2, '0')}`,
+          ...baseData, id: `${groupId}-${i}`, groupId, month: thisMonth,
           totalAmount: mAmount, fullTotalAmount: amount, isMonthlyAmount: true,
           installmentMonths: tMonths, currentInstallment: i,
-          splitDetails: formData.payerType === 'split' ? splitData : undefined, status: 'pending', createdAt: Date.now() + i
+          splitDetails: splitDataCopy, 
+          status: isPast ? 'paid' : 'pending', 
+          paidMonth: isPast ? thisMonth : null,
+          paidAt: isPast ? Date.now() : null,
+          createdAt: Date.now() + i
         });
       }
     } else {
@@ -165,6 +179,7 @@ export default function App() {
   const [modal, setModal] = useState({ open: false, edit: null });
   const [selectedForPay, setSelectedForPay] = useState({});
   const [splitModal, setSplitModal] = useState({ open: false, expId: null, members: [] });
+  const [partialPayModal, setPartialPayModal] = useState({ open: false, exp: null, amount: '', payerId: '' });
   const [toast, setToast] = useState('');
 
   const fetchData = useCallback(async (silent = false) => {
@@ -303,6 +318,60 @@ export default function App() {
     updateDB({ expenses: newExps }); setSelectedForPay({}); showToast("ชำระเงินเรียบร้อย");
   };
 
+  const confirmPartialPay = (e) => {
+    e.preventDefault();
+    const { exp, amount, payerId } = partialPayModal;
+    const splitAmount = parseFloat(amount);
+    if (!splitAmount || splitAmount <= 0) return alert('ยอดเงินไม่ถูกต้อง');
+    
+    let originalAmount = 0;
+    if (exp.payerType === 'single') originalAmount = parseFloat(exp.totalAmount);
+    else originalAmount = parseFloat(exp.splitDetails[payerId]?.amount) || 0;
+    
+    if (splitAmount >= originalAmount) {
+      const pMonth = filters.month || new Date().toISOString().slice(0, 7);
+      const pAt = Date.now();
+      const ne = {...exp};
+      if (ne.payerType === 'single') {
+        ne.status = 'paid'; ne.paidMonth = pMonth; ne.paidAt = pAt;
+      } else {
+        const ns = {...ne.splitDetails};
+        ns[payerId] = { ...ns[payerId], paid: true, paidMonth: pMonth, paidAt: pAt };
+        ne.splitDetails = ns;
+        ne.status = Object.values(ns).every(v=>v.paid) ? 'paid' : 'pending';
+      }
+      updateDB({ expenses: dbData.expenses.map(x => String(x.id) === String(ne.id) ? ne : x) });
+    } else {
+      const pMonth = filters.month || new Date().toISOString().slice(0, 7);
+      const pAt = Date.now();
+      const bill1 = { ...exp, updatedAt: Date.now() }; 
+      const bill2 = { ...exp, id: Date.now().toString() + '-rem', createdAt: Date.now(), updatedAt: Date.now(), title: exp.title + ' (ยอดคงเหลือ)' }; 
+      
+      if (exp.payerType === 'single') {
+        bill1.totalAmount = splitAmount;
+        bill1.status = 'paid'; bill1.paidMonth = pMonth; bill1.paidAt = pAt;
+        bill2.totalAmount = originalAmount - splitAmount;
+        bill2.status = 'pending'; bill2.paidMonth = null; bill2.paidAt = null;
+      } else {
+        const b1Split = {}; const b2Split = {};
+        Object.keys(exp.splitDetails).forEach(id => {
+          if (String(id) === String(payerId)) {
+            b1Split[id] = { ...exp.splitDetails[id], amount: splitAmount, paid: true, paidMonth: pMonth, paidAt: pAt };
+            b2Split[id] = { ...exp.splitDetails[id], amount: originalAmount - splitAmount, paid: false, paidMonth: null, paidAt: null };
+          } else {
+            b1Split[id] = { ...exp.splitDetails[id], amount: 0, paid: true, paidMonth: pMonth, paidAt: pAt }; 
+            b2Split[id] = { ...exp.splitDetails[id] }; 
+          }
+        });
+        bill1.splitDetails = b1Split; bill1.status = 'paid';
+        bill2.splitDetails = b2Split; bill2.status = 'pending';
+      }
+      updateDB({ expenses: [...dbData.expenses.filter(x => String(x.id) !== String(exp.id)), bill1, bill2] });
+    }
+    setPartialPayModal({ open: false, exp: null, amount: '', payerId: '' });
+    showToast("แบ่งชำระเรียบร้อย");
+  };
+
   if (isLoading) return <div className="min-h-screen flex items-center justify-center font-bold text-cyan-400 bg-[#0B0F19]">กำลังโหลด...</div>;
 
   return (
@@ -393,8 +462,8 @@ export default function App() {
                   const isPd = filters.month ? (st === 'paid' && pMonth === filters.month) : (st === 'paid');
                   return (
                     <div key={e.id} className={`${theme.card} p-4 flex justify-between items-center transition-all ${isPd?'opacity-50 grayscale-[50%]':selectedForPay[e.id]?'ring-2 ring-cyan-400 bg-cyan-900/10 shadow-[0_0_15px_rgba(6,182,212,0.15)]':'hover:border-slate-700'}`}>
-                      <div className="flex items-center w-2/3">
-                        {st !== 'paid' && <input type="checkbox" checked={!!selectedForPay[e.id]} onChange={()=>togglePay(e)} className="w-5 h-5 mr-3 accent-cyan-500 rounded bg-[#0B0F19] border-slate-700" />}
+                      <div className="flex items-center w-2/3 cursor-pointer" onClick={() => { if(st !== 'paid') togglePay(e); }}>
+                        {st !== 'paid' && <input type="checkbox" checked={!!selectedForPay[e.id]} readOnly className="w-5 h-5 mr-3 accent-cyan-500 rounded bg-[#0B0F19] border-slate-700 cursor-pointer pointer-events-none" />}
                         <div className={`p-2 rounded-xl mr-3 shadow-inner ${isPd ? 'bg-slate-800/50' : 'bg-[#0B0F19] border border-slate-800'}`}>{getIconForCategory(cat?.name)}</div>
                         <div className="truncate">
                           <h3 className={`font-bold text-sm truncate text-slate-200 ${isPd?'line-through text-slate-500':''}`}>
@@ -416,8 +485,11 @@ export default function App() {
                         <span className={`font-black ${isPd?'text-slate-500':'text-cyan-300 drop-shadow-[0_0_5px_rgba(103,232,249,0.3)]'}`}>{formatCurrency(amt)}</span>
                         <div className="flex items-center gap-2 mt-1">
                           {isPd ? <span className="text-[10px] text-emerald-500 font-bold bg-emerald-950/30 px-2 py-0.5 rounded border border-emerald-900/50">ชำระแล้ว</span> : <span className="text-[10px] text-pink-500 font-bold bg-pink-950/30 px-2 py-0.5 rounded border border-pink-900/50">รอชำระ</span>}
-                          <button onClick={() => setModal({open:true, edit:e})} className="text-slate-500 hover:text-cyan-400 transition-colors"><Edit size={14}/></button>
-                          <button onClick={() => { if(window.confirm('ลบบิลนี้?')) updateDB({expenses: dbData.expenses.filter(x=>e.groupId?String(x.groupId)!==String(e.groupId):String(x.id)!==String(e.id))}); }} className="text-slate-500 hover:text-pink-500 transition-colors"><Trash2 size={14}/></button>
+                          {st !== 'paid' && e.paymentType !== 'installment' && (
+                            <button onClick={(ev) => { ev.stopPropagation(); setPartialPayModal({open:true, exp:e, amount:'', payerId: (e.payerType === 'split' && filters.payer) ? filters.payer : ''}); }} className="text-[10px] text-amber-500 font-bold bg-amber-950/30 px-2 py-0.5 rounded border border-amber-900/50 hover:bg-amber-900/50 transition-colors mr-1">แบ่งจ่าย</button>
+                          )}
+                          <button onClick={(ev) => { ev.stopPropagation(); setModal({open:true, edit:e}); }} className="text-slate-500 hover:text-cyan-400 transition-colors"><Edit size={14}/></button>
+                          <button onClick={(ev) => { ev.stopPropagation(); if(window.confirm('ลบบิลนี้?')) updateDB({expenses: dbData.expenses.filter(x=>e.groupId?String(x.groupId)!==String(e.groupId):String(x.id)!==String(e.id))}); }} className="text-slate-500 hover:text-pink-500 transition-colors"><Trash2 size={14}/></button>
                         </div>
                       </div>
                     </div>
@@ -480,6 +552,23 @@ export default function App() {
              </div>
              <div className="flex gap-3"><button onClick={()=>setSplitModal({open:false})} className="flex-1 py-3 bg-[#0B0F19] text-slate-300 rounded-xl font-bold border border-slate-800 hover:bg-slate-800 transition">ยกเลิก</button><button onClick={confirmSplitPay} className={`${theme.button} flex-1 py-3`}>ยืนยัน</button></div>
           </div>
+        </div>
+      )}
+      {partialPayModal.open && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+          <form onSubmit={confirmPartialPay} className="bg-[#161C2D] border border-slate-800 w-full max-w-sm rounded-3xl p-6 shadow-[0_0_40px_rgba(0,0,0,0.5)]">
+             <h3 className="text-lg font-bold text-slate-100 mb-4 flex items-center"><Coffee className="mr-2 text-amber-400"/> แบ่งจ่าย (ยอดคงเหลือจะถูกแยกบิลใหม่)</h3>
+             {partialPayModal.exp.payerType === 'split' && !filters.payer && (
+                <select required value={partialPayModal.payerId} onChange={e=>setPartialPayModal({...partialPayModal, payerId: e.target.value})} className={`${theme.input} mb-3`}>
+                  <option value="">เลือกผู้จ่ายที่ต้องการแบ่งชำระ...</option>
+                  {Object.keys(partialPayModal.exp.splitDetails).filter(id => !partialPayModal.exp.splitDetails[id].paid).map(id => (
+                    <option key={id} value={id}>{dbData.members.find(m=>String(m.id)===String(id))?.name} (ยอด {formatCurrency(partialPayModal.exp.splitDetails[id].amount)})</option>
+                  ))}
+                </select>
+             )}
+             <input type="number" required max={partialPayModal.exp.payerType==='single' ? partialPayModal.exp.totalAmount : (partialPayModal.exp.splitDetails?.[partialPayModal.payerId || filters.payer]?.amount || partialPayModal.exp.totalAmount)} step="0.01" placeholder="ระบุจำนวนเงินที่จ่าย..." value={partialPayModal.amount} onChange={e=>setPartialPayModal({...partialPayModal, amount: e.target.value})} className={`${theme.input} mb-5`} />
+             <div className="flex gap-3"><button type="button" onClick={()=>setPartialPayModal({open:false, exp:null, amount:'', payerId:''})} className="flex-1 py-3 bg-[#0B0F19] text-slate-300 rounded-xl font-bold border border-slate-800 hover:bg-slate-800 transition">ยกเลิก</button><button type="submit" className={`${theme.button} flex-1 py-3`}>ยืนยัน</button></div>
+          </form>
         </div>
       )}
       {toast && <div className="fixed top-10 left-1/2 -translate-x-1/2 z-[200] bg-slate-800 border border-slate-700 shadow-[0_4px_20px_rgba(0,0,0,0.5)] text-slate-100 px-6 py-3 rounded-full font-bold text-sm flex items-center"><Zap size={16} className="mr-2 text-cyan-400"/>{toast}</div>}
