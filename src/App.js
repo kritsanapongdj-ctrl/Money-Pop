@@ -318,6 +318,36 @@ export default function App() {
     updateDB({ expenses: newExps }); setSelectedForPay({}); showToast("ชำระเงินเรียบร้อย");
   };
 
+  const handleUndoPay = (exp) => {
+    if (!window.confirm("คุณต้องการยกเลิกการชำระเงินสำหรับรายการนี้ใช่หรือไม่? (เปลี่ยนกลับเป็น รอชำระ)")) return;
+    
+    const ne = { ...exp };
+    if (ne.payerType === 'single') {
+       ne.status = 'pending';
+       ne.paidMonth = null;
+       ne.paidAt = null;
+    } else {
+       const ns = { ...ne.splitDetails };
+       if (filters.payer) {
+         if (ns[filters.payer]) {
+           ns[filters.payer].paid = false;
+           ns[filters.payer].paidMonth = null;
+           ns[filters.payer].paidAt = null;
+         }
+       } else {
+         Object.keys(ns).forEach(id => {
+           ns[id].paid = false;
+           ns[id].paidMonth = null;
+           ns[id].paidAt = null;
+         });
+       }
+       ne.splitDetails = ns;
+       ne.status = Object.values(ns).every(v=>v.paid) ? 'paid' : 'pending';
+    }
+    updateDB({ expenses: dbData.expenses.map(x => String(x.id) === String(ne.id) ? ne : x) });
+    showToast("ยกเลิกการชำระเงินแล้ว");
+  };
+
   const confirmPartialPay = (e) => {
     e.preventDefault();
     const { exp, amount, payerId } = partialPayModal;
@@ -485,6 +515,9 @@ export default function App() {
                         <span className={`font-black ${isPd?'text-slate-500':'text-cyan-300 drop-shadow-[0_0_5px_rgba(103,232,249,0.3)]'}`}>{formatCurrency(amt)}</span>
                         <div className="flex items-center gap-2 mt-1">
                           {isPd ? <span className="text-[10px] text-emerald-500 font-bold bg-emerald-950/30 px-2 py-0.5 rounded border border-emerald-900/50">ชำระแล้ว</span> : <span className="text-[10px] text-pink-500 font-bold bg-pink-950/30 px-2 py-0.5 rounded border border-pink-900/50">รอชำระ</span>}
+                          {isPd && (
+                            <button onClick={(ev) => { ev.stopPropagation(); handleUndoPay(e); }} className="text-[10px] text-rose-500 font-bold bg-rose-950/30 px-2 py-0.5 rounded border border-rose-900/50 hover:bg-rose-900/50 transition-colors mr-1">ยกเลิกชำระ</button>
+                          )}
                           {st !== 'paid' && e.paymentType !== 'installment' && (
                             <button onClick={(ev) => { ev.stopPropagation(); setPartialPayModal({open:true, exp:e, amount:'', payerId: (e.payerType === 'split' && filters.payer) ? filters.payer : ''}); }} className="text-[10px] text-amber-500 font-bold bg-amber-950/30 px-2 py-0.5 rounded border border-amber-900/50 hover:bg-amber-900/50 transition-colors mr-1">แบ่งจ่าย</button>
                           )}
