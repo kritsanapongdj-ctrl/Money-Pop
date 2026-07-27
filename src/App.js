@@ -499,6 +499,7 @@ export default function App() {
                   }
                 });
               }
+            });
             const barData = Object.keys(cMap).map(k=>({n:k, v:cMap[k]}));
             return (
               <div className="px-4 sm:px-0 space-y-4">
