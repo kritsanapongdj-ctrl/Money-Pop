@@ -180,6 +180,7 @@ export default function App() {
   const [selectedForPay, setSelectedForPay] = useState({});
   const [splitModal, setSplitModal] = useState({ open: false, expId: null, members: [] });
   const [partialPayModal, setPartialPayModal] = useState({ open: false, exp: null, amount: '', payerId: '' });
+  const [receiptModal, setReceiptModal] = useState({ open: false, items: [], total: 0, date: null });
   const [toast, setToast] = useState('');
 
   const fetchData = useCallback(async (silent = false) => {
@@ -300,22 +301,34 @@ export default function App() {
   const bulkPay = () => {
     const pMonth = filters.month || new Date().toISOString().slice(0, 7);
     const pAt = Date.now();
+    const paidItems = [];
+    let totalPaid = 0;
+
     const newExps = dbData.expenses.map(e => {
       if (!selectedForPay[e.id]) return e;
       const pd = selectedForPay[e.id]; const ne = {...e};
+      
+      let itemTitle = ne.title;
       if (pd.type === 'single') {
         ne.status = 'paid'; ne.paidMonth = pMonth; ne.paidAt = pAt;
       } else { 
         const ns = {...ne.splitDetails}; 
+        const payerNames = pd.ids.map(id => dbData.members.find(m => String(m.id) === String(id))?.name).join(', ');
+        itemTitle = `${ne.title} (${payerNames})`;
         pd.ids.forEach(id => { 
           if (ns[id]) { ns[id].paid = true; ns[id].paidMonth = pMonth; ns[id].paidAt = pAt; }
         }); 
         ne.splitDetails = ns; 
         ne.status = Object.values(ns).every(v=>v.paid) ? 'paid' : 'pending'; 
       }
+      paidItems.push({ title: itemTitle, amount: pd.amount });
+      totalPaid += pd.amount;
       return ne;
     });
-    updateDB({ expenses: newExps }); setSelectedForPay({}); showToast("ชำระเงินเรียบร้อย");
+    
+    updateDB({ expenses: newExps }); 
+    setSelectedForPay({}); 
+    setReceiptModal({ open: true, items: paidItems, total: totalPaid, date: pAt });
   };
 
   const handleUndoPay = (exp) => {
@@ -399,7 +412,7 @@ export default function App() {
       updateDB({ expenses: [...dbData.expenses.filter(x => String(x.id) !== String(exp.id)), bill1, bill2] });
     }
     setPartialPayModal({ open: false, exp: null, amount: '', payerId: '' });
-    showToast("แบ่งชำระเรียบร้อย");
+    setReceiptModal({ open: true, items: [{ title: `${exp.title} (แบ่งจ่าย)`, amount: splitAmount }], total: splitAmount, date: Date.now() });
   };
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center font-bold text-cyan-400 bg-[#0B0F19]">กำลังโหลด...</div>;
@@ -602,6 +615,44 @@ export default function App() {
              <input type="number" required max={partialPayModal.exp.payerType==='single' ? partialPayModal.exp.totalAmount : (partialPayModal.exp.splitDetails?.[partialPayModal.payerId || filters.payer]?.amount || partialPayModal.exp.totalAmount)} step="0.01" placeholder="ระบุจำนวนเงินที่จ่าย..." value={partialPayModal.amount} onChange={e=>setPartialPayModal({...partialPayModal, amount: e.target.value})} className={`${theme.input} mb-5`} />
              <div className="flex gap-3"><button type="button" onClick={()=>setPartialPayModal({open:false, exp:null, amount:'', payerId:''})} className="flex-1 py-3 bg-[#0B0F19] text-slate-300 rounded-xl font-bold border border-slate-800 hover:bg-slate-800 transition">ยกเลิก</button><button type="submit" className={`${theme.button} flex-1 py-3`}>ยืนยัน</button></div>
           </form>
+        </div>
+      )}
+      {receiptModal.open && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[120] flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-[#161C2D] border border-cyan-500 w-full max-w-sm rounded-2xl p-6 shadow-[0_0_40px_rgba(6,182,212,0.2)] relative overflow-hidden">
+             <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/20 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+             <div className="absolute bottom-0 left-0 w-32 h-32 bg-pink-500/20 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none"></div>
+             
+             <div className="text-center mb-6 pt-2 relative z-10">
+               <div className="mx-auto w-12 h-12 bg-cyan-900/50 rounded-full flex items-center justify-center mb-3 shadow-[0_0_15px_rgba(6,182,212,0.5)] border border-cyan-400">
+                 <Check size={24} className="text-cyan-400" />
+               </div>
+               <h2 className="text-xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-pink-400 drop-shadow-sm">PAYMENT SUCCESS</h2>
+               <p className="text-xs text-slate-400 mt-1">{new Date(receiptModal.date).toLocaleString('th-TH')}</p>
+             </div>
+             
+             <div className="border-t border-dashed border-slate-700 my-4 relative z-10"></div>
+             
+             <div className="space-y-3 max-h-[40vh] overflow-y-auto custom-scrollbar pr-2 relative z-10">
+               {receiptModal.items.map((item, idx) => (
+                 <div key={idx} className="flex justify-between items-start text-sm">
+                   <span className="font-medium text-slate-300 pr-4">{item.title}</span>
+                   <span className="font-bold text-cyan-100 tabular-nums whitespace-nowrap">{formatCurrency(item.amount)}</span>
+                 </div>
+               ))}
+             </div>
+             
+             <div className="border-t border-dashed border-slate-700 my-4 relative z-10"></div>
+             
+             <div className="flex justify-between items-center text-lg relative z-10">
+               <span className="font-black text-slate-200">TOTAL PAID</span>
+               <span className="font-black text-pink-400 drop-shadow-[0_0_5px_rgba(236,72,153,0.5)]">{formatCurrency(receiptModal.total)}</span>
+             </div>
+             
+             <div className="mt-8 relative z-10">
+               <button onClick={()=>setReceiptModal({open: false})} className={`${theme.button} w-full py-3`}>ปิดใบเสร็จ</button>
+             </div>
+          </div>
         </div>
       )}
       {toast && <div className="fixed top-10 left-1/2 -translate-x-1/2 z-[200] bg-slate-800 border border-slate-700 shadow-[0_4px_20px_rgba(0,0,0,0.5)] text-slate-100 px-6 py-3 rounded-full font-bold text-sm flex items-center"><Zap size={16} className="mr-2 text-cyan-400"/>{toast}</div>}
