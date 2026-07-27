@@ -57,7 +57,7 @@ const ListManager = ({ title, data, updateDB, dataKey, icon: Icon, hasEmail }) =
   );
 };
 
-const ExpenseFormModal = ({ editingExpense, dbData, updateDB, close, showToast }) => {
+const ExpenseFormModal = ({ editingExpense, dbData, updateDB, close, showToast, currentUser }) => {
   const [formData, setFormData] = useState(() => {
     if (editingExpense) {
       // ป้องกันยอดเต็มบิลหายเมื่อแก้ไขรายการ
@@ -77,13 +77,17 @@ const ExpenseFormModal = ({ editingExpense, dbData, updateDB, close, showToast }
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!currentUser) {
+      showToast("⚠️ กรุณาเลือกชื่อ 'ผู้ทำรายการ' ที่มุมขวาบนก่อนเพิ่มบิล");
+      return;
+    }
     const amount = parseFloat(formData.totalAmount);
     if (isNaN(amount) || amount <= 0) return alert("ยอดเงินไม่ถูกต้อง");
 
     let cleanExpenses = editingExpense ? dbData.expenses.filter(exp => editingExpense.groupId ? String(exp.groupId) !== String(editingExpense.groupId) : String(exp.id) !== String(editingExpense.id)) : dbData.expenses;
     let newExpenses = [];
     const groupId = editingExpense?.groupId || Date.now().toString();
-    const baseData = { ...formData, updatedAt: Date.now() };
+    const baseData = { ...formData, updatedAt: Date.now(), createdBy: editingExpense?.createdBy || currentUser };
 
     if (formData.paymentType === 'installment') {
       const tMonths = parseInt(formData.installmentMonths);
@@ -181,6 +185,7 @@ export default function App() {
   const [splitModal, setSplitModal] = useState({ open: false, expId: null, members: [] });
   const [partialPayModal, setPartialPayModal] = useState({ open: false, exp: null, amount: '', payerId: '' });
   const [receiptModal, setReceiptModal] = useState({ open: false, items: [], total: 0, date: null });
+  const [currentUser, setCurrentUser] = useState(localStorage.getItem('moneyPopUser') || '');
   const [toast, setToast] = useState('');
 
   const fetchData = useCallback(async (silent = false) => {
@@ -299,6 +304,7 @@ export default function App() {
   };
 
   const bulkPay = () => {
+    if (!currentUser) return showToast("⚠️ กรุณาเลือกชื่อ 'ผู้ทำรายการ' ที่มุมขวาบนก่อนทำรายการ");
     const pMonth = filters.month || new Date().toISOString().slice(0, 7);
     const pAt = Date.now();
     const paidItems = [];
@@ -310,13 +316,13 @@ export default function App() {
       
       let itemTitle = ne.title;
       if (pd.type === 'single') {
-        ne.status = 'paid'; ne.paidMonth = pMonth; ne.paidAt = pAt;
+        ne.status = 'paid'; ne.paidMonth = pMonth; ne.paidAt = pAt; ne.paidBy = currentUser;
       } else { 
         const ns = {...ne.splitDetails}; 
         const payerNames = pd.ids.map(id => dbData.members.find(m => String(m.id) === String(id))?.name).join(', ');
         itemTitle = `${ne.title} (${payerNames})`;
         pd.ids.forEach(id => { 
-          if (ns[id]) { ns[id].paid = true; ns[id].paidMonth = pMonth; ns[id].paidAt = pAt; }
+          if (ns[id]) { ns[id].paid = true; ns[id].paidMonth = pMonth; ns[id].paidAt = pAt; ns[id].paidBy = currentUser; }
         }); 
         ne.splitDetails = ns; 
         ne.status = Object.values(ns).every(v=>v.paid) ? 'paid' : 'pending'; 
@@ -332,6 +338,7 @@ export default function App() {
   };
 
   const handleUndoPay = (exp) => {
+    if (!currentUser) return showToast("⚠️ กรุณาเลือกชื่อ 'ผู้ทำรายการ' ที่มุมขวาบนก่อนทำรายการ");
     if (!window.confirm("คุณต้องการยกเลิกการชำระเงินสำหรับรายการนี้ใช่หรือไม่? (เปลี่ยนกลับเป็น รอชำระ)")) return;
     
     const ne = { ...exp };
@@ -363,6 +370,7 @@ export default function App() {
 
   const confirmPartialPay = (e) => {
     e.preventDefault();
+    if (!currentUser) return showToast("⚠️ กรุณาเลือกชื่อ 'ผู้ทำรายการ' ที่มุมขวาบนก่อนทำรายการ");
     const { exp, amount, payerId } = partialPayModal;
     const splitAmount = parseFloat(amount);
     if (!splitAmount || splitAmount <= 0) return alert('ยอดเงินไม่ถูกต้อง');
@@ -376,10 +384,10 @@ export default function App() {
       const pAt = Date.now();
       const ne = {...exp};
       if (ne.payerType === 'single') {
-        ne.status = 'paid'; ne.paidMonth = pMonth; ne.paidAt = pAt;
+        ne.status = 'paid'; ne.paidMonth = pMonth; ne.paidAt = pAt; ne.paidBy = currentUser;
       } else {
         const ns = {...ne.splitDetails};
-        ns[payerId] = { ...ns[payerId], paid: true, paidMonth: pMonth, paidAt: pAt };
+        ns[payerId] = { ...ns[payerId], paid: true, paidMonth: pMonth, paidAt: pAt, paidBy: currentUser };
         ne.splitDetails = ns;
         ne.status = Object.values(ns).every(v=>v.paid) ? 'paid' : 'pending';
       }
@@ -392,17 +400,17 @@ export default function App() {
       
       if (exp.payerType === 'single') {
         bill1.totalAmount = splitAmount;
-        bill1.status = 'paid'; bill1.paidMonth = pMonth; bill1.paidAt = pAt;
+        bill1.status = 'paid'; bill1.paidMonth = pMonth; bill1.paidAt = pAt; bill1.paidBy = currentUser;
         bill2.totalAmount = originalAmount - splitAmount;
         bill2.status = 'pending'; bill2.paidMonth = null; bill2.paidAt = null;
       } else {
         const b1Split = {}; const b2Split = {};
         Object.keys(exp.splitDetails).forEach(id => {
           if (String(id) === String(payerId)) {
-            b1Split[id] = { ...exp.splitDetails[id], amount: splitAmount, paid: true, paidMonth: pMonth, paidAt: pAt };
+            b1Split[id] = { ...exp.splitDetails[id], amount: splitAmount, paid: true, paidMonth: pMonth, paidAt: pAt, paidBy: currentUser };
             b2Split[id] = { ...exp.splitDetails[id], amount: originalAmount - splitAmount, paid: false, paidMonth: null, paidAt: null };
           } else {
-            b1Split[id] = { ...exp.splitDetails[id], amount: 0, paid: true, paidMonth: pMonth, paidAt: pAt }; 
+            b1Split[id] = { ...exp.splitDetails[id], amount: 0, paid: true, paidMonth: pMonth, paidAt: pAt, paidBy: currentUser }; 
             b2Split[id] = { ...exp.splitDetails[id] }; 
           }
         });
@@ -422,7 +430,13 @@ export default function App() {
       <div className="max-w-md sm:max-w-3xl lg:max-w-5xl mx-auto flex flex-col h-[100dvh] bg-[#0B0F19] border-x border-slate-800 shadow-2xl shadow-cyan-900/10">
         <header className="bg-[#161C2D]/90 backdrop-blur-md px-4 py-3 flex justify-between items-center border-b border-slate-800/80 z-30">
           <div className="text-xl font-black text-slate-100 flex items-center tracking-tight"><Zap size={20} className="mr-1 text-pink-500 drop-shadow-[0_0_8px_rgba(236,72,153,0.8)]" /> MONEY<span className="text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]">-POP</span></div>
-          {isSyncing ? <RefreshCw size={18} className="animate-spin text-cyan-500" /> : <button onClick={()=>fetchData(true)} className="text-slate-400 hover:text-cyan-400 transition-colors"><RefreshCw size={18}/></button>}
+          <div className="flex items-center gap-3">
+            <select value={currentUser} onChange={e=>{setCurrentUser(e.target.value); localStorage.setItem('moneyPopUser', e.target.value);}} className="bg-[#0B0F19] text-xs font-bold border border-slate-700 text-slate-300 rounded-lg px-2 py-1 focus:border-cyan-500 outline-none shadow-inner">
+              <option value="">👤 ผู้ทำรายการ...</option>
+              {dbData.members.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+            {isSyncing ? <RefreshCw size={18} className="animate-spin text-cyan-500" /> : <button onClick={()=>fetchData(true)} className="text-slate-400 hover:text-cyan-400 transition-colors"><RefreshCw size={18}/></button>}
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto sm:p-6 pb-20 custom-scrollbar">
@@ -579,7 +593,7 @@ export default function App() {
         </nav>
       </div>
 
-      {modal.open && <ExpenseFormModal editingExpense={modal.edit} dbData={dbData} updateDB={updateDB} close={()=>setModal({open:false, edit:null})} showToast={showToast} />}
+      {modal.open && <ExpenseFormModal editingExpense={modal.edit} dbData={dbData} updateDB={updateDB} close={()=>setModal({open:false, edit:null})} showToast={showToast} currentUser={currentUser} />}
       
       {splitModal.open && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
@@ -629,6 +643,7 @@ export default function App() {
                </div>
                <h2 className="text-xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-pink-400 drop-shadow-sm">PAYMENT SUCCESS</h2>
                <p className="text-xs text-slate-400 mt-1">{new Date(receiptModal.date).toLocaleString('th-TH')}</p>
+               <p className="text-xs text-slate-500 mt-1">ทำรายการโดย: <span className="text-cyan-400 font-bold">{dbData.members.find(m=>String(m.id)===String(currentUser))?.name || 'ไม่ระบุ'}</span></p>
              </div>
              
              <div className="border-t border-dashed border-slate-700 my-4 relative z-10"></div>
