@@ -8,7 +8,7 @@ import {
   Home, CreditCard, PiggyBank, Settings, Plus, Check, Trash2, Edit, 
   Filter, X, ShoppingBag, Coffee, Car, Home as HomeIcon, Smartphone,
   Zap, Image as ImageIcon, Users, HeartPulse, ShoppingCart, RefreshCw,
-  Download, Upload
+  Download, Upload, FileText, Clock
 } from 'lucide-react';
 
 const GAS_URL = "https://script.google.com/macros/s/AKfycbzbO-BbqufnRT6kZ1j8u8PLmhxPM3MSCY_VRZIUOsV6KlGIbGeOAgBVH_7HnVBSvSne/exec"; 
@@ -255,14 +255,13 @@ export default function App() {
     event.target.value = null; 
   };
 
-  // กรองข้อมูลโดยเปรียบเทียบเป็น String เสมอ เพื่อป้องกันข้อผิดพลาดจากประเภทข้อมูล
   const filteredExps = useMemo(() => dbData.expenses.filter(exp => {
     if (filters.category && String(exp.categoryId) !== String(filters.category)) return false;
     if (filters.payer && (exp.payerType === 'single' ? String(exp.payerId) !== String(filters.payer) : !exp.splitDetails?.[filters.payer])) return false;
     
     if (!filters.month || exp.month === filters.month) return true;
     if (exp.month < filters.month) {
-      if (exp.month < '2026-06') return false; // ป้องกันการยกยอดข้อมูลเก่าก่อนเดือน 06/2026
+      if (exp.month < '2026-06') return false; 
       if (exp.payerType === 'single') {
         const pMonth = (exp.status === 'paid' && !exp.paidMonth) ? exp.month : exp.paidMonth;
         return !pMonth || pMonth >= filters.month;
@@ -275,6 +274,29 @@ export default function App() {
     }
     return false;
   }), [dbData.expenses, filters]);
+
+  const receiptHistory = useMemo(() => {
+    const receipts = {};
+    dbData.expenses.forEach(e => {
+      if (e.payerType === 'single' && e.status === 'paid' && e.paidAt) {
+        if (!receipts[e.paidAt]) receipts[e.paidAt] = { date: e.paidAt, items: [], total: 0, by: e.paidBy };
+        receipts[e.paidAt].items.push({ title: e.title, amount: parseFloat(e.totalAmount) || 0 });
+        receipts[e.paidAt].total += parseFloat(e.totalAmount) || 0;
+        if (!receipts[e.paidAt].by && e.paidBy) receipts[e.paidAt].by = e.paidBy;
+      } else if (e.payerType === 'split') {
+        Object.entries(e.splitDetails).forEach(([id, d]) => {
+          if (d.paid && d.paidAt) {
+            if (!receipts[d.paidAt]) receipts[d.paidAt] = { date: d.paidAt, items: [], total: 0, by: d.paidBy };
+            const mName = dbData.members.find(m => String(m.id) === String(id))?.name || '';
+            receipts[d.paidAt].items.push({ title: `${e.title} (${mName})`, amount: parseFloat(d.amount) || 0 });
+            receipts[d.paidAt].total += parseFloat(d.amount) || 0;
+            if (!receipts[d.paidAt].by && d.paidBy) receipts[d.paidAt].by = d.paidBy;
+          }
+        });
+      }
+    });
+    return Object.values(receipts).sort((a, b) => b.date - a.date);
+  }, [dbData.expenses, dbData.members]);
 
   const togglePay = (exp) => {
     if (selectedForPay[exp.id]) { 
@@ -477,7 +499,7 @@ export default function App() {
                   }
                 });
               }
-            });
+            const barData = Object.keys(cMap).map(k=>({n:k, v:cMap[k]}));
             return (
               <div className="px-4 sm:px-0 space-y-4">
                 <div className={`${theme.card} p-5 bg-gradient-to-br from-[#1e1b4b] via-[#0f172a] to-[#082f49] text-white border-cyan-500/30 relative overflow-hidden`}>
@@ -488,8 +510,7 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-3 z-10 relative"><div className="bg-[#0B0F19]/60 backdrop-blur-md p-3 rounded-xl border-l-4 border-cyan-500 shadow-inner"><p className="text-xs font-bold text-slate-400">ชำระแล้ว</p><p className="text-lg font-black text-cyan-400">{formatCurrency(tPaid)}</p></div><div className="bg-[#0B0F19]/60 backdrop-blur-md p-3 rounded-xl border-l-4 border-pink-500 shadow-inner"><p className="text-xs font-bold text-slate-400">รอชำระ</p><p className="text-lg font-black text-pink-400">{formatCurrency(tPend)}</p></div></div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className={`${theme.card} p-4 h-64`}><h3 className="text-sm font-bold text-cyan-400 mb-2">แยกตามหมวดหมู่</h3><ResponsiveContainer><BarChart data={Object.keys(cMap).map(k=>({n:k, v:cMap[k]}))} layout="vertical" margin={{left:10}}><XAxis type="number" hide /><YAxis dataKey="n" type="category" width={70} tick={{fontSize:11, fill:'#94a3b8'}}/><RechartsTooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{backgroundColor: '#0B0F19', border: '1px solid #1e293b', borderRadius: '8px', color: '#f1f5f9'}} formatter={v=>formatCurrency(v)}/><Bar dataKey="v" fill="#06b6d4" radius={[0,4,4,0]} barSize={20}><Cell fill="url(#colorCyan)"/></Bar></BarChart></ResponsiveContainer>
-                    <svg width="0" height="0"><defs><linearGradient id="colorCyan" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#06b6d4" /><stop offset="100%" stopColor="#3b82f6" /></linearGradient></defs></svg>
+                  <div className={`${theme.card} p-4 h-64`}><h3 className="text-sm font-bold text-cyan-400 mb-2">แยกตามหมวดหมู่</h3><ResponsiveContainer><BarChart data={barData} layout="vertical" margin={{left:10}}><XAxis type="number" hide /><YAxis dataKey="n" type="category" width={70} tick={{fontSize:11, fill:'#94a3b8'}}/><RechartsTooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{backgroundColor: '#0B0F19', border: '1px solid #1e293b', borderRadius: '8px', color: '#f1f5f9'}} formatter={v=>formatCurrency(v)}/><Bar dataKey="v" radius={[0,4,4,0]} barSize={20}>{barData.map((entry, index) => <Cell key={`cell-${index}`} fill={theme.chartColors[index % theme.chartColors.length]} />)}</Bar></BarChart></ResponsiveContainer>
                   </div>
                   {!filters.payer && <div className={`${theme.card} p-4 h-64`}><h3 className="text-sm font-bold text-cyan-400 mb-2">แยกรายบุคคล</h3><ResponsiveContainer><PieChart><Pie data={Object.keys(mMap).map(k=>({n:k, v:mMap[k]}))} dataKey="v" nameKey="n" innerRadius={40} outerRadius={70} stroke="none">{Object.keys(mMap).map((_,i)=><Cell key={i} fill={theme.chartColors[i%5]}/>)}</Pie><RechartsTooltip contentStyle={{backgroundColor: '#0B0F19', border: '1px solid #1e293b', borderRadius: '8px', color: '#f1f5f9'}} formatter={v=>formatCurrency(v)}/><Legend iconType="circle" wrapperStyle={{fontSize:'12px', color:'#cbd5e1'}}/></PieChart></ResponsiveContainer></div>}
                 </div>
@@ -559,6 +580,40 @@ export default function App() {
             </div>
           )}
 
+          {tab === 'receipts' && (
+            <div className="px-4 sm:px-0 space-y-4">
+              <div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-slate-100 flex items-center"><FileText size={20} className="mr-2 text-cyan-400"/> ประวัติใบเสร็จ</h2></div>
+              {receiptHistory.length === 0 ? (
+                <div className="text-center text-slate-500 py-10"><Clock size={40} className="mx-auto mb-3 opacity-50"/>ยังไม่มีประวัติใบเสร็จ</div>
+              ) : (
+                <div className="space-y-4">
+                  {receiptHistory.map(r => (
+                     <div key={r.date} className={`${theme.card} p-5 bg-gradient-to-br from-[#0B0F19] to-[#161C2D] border-slate-800 relative overflow-hidden`}>
+                       <div className="flex justify-between items-start mb-3 border-b border-slate-800 pb-3">
+                         <div>
+                           <div className="text-xs text-slate-400 flex items-center mb-1"><Clock size={12} className="mr-1"/> {new Date(r.date).toLocaleString('th-TH')}</div>
+                           <div className="text-[10px] text-cyan-500 bg-cyan-950/40 px-2 py-0.5 rounded font-bold border border-cyan-900/50 inline-block mt-1">ทำรายการโดย: {dbData.members.find(m=>String(m.id)===String(r.by))?.name || 'ไม่ระบุ'}</div>
+                         </div>
+                         <div className="text-right">
+                           <div className="text-xs text-slate-500 uppercase font-bold">TOTAL</div>
+                           <div className="text-lg font-black text-pink-400 drop-shadow-[0_0_5px_rgba(236,72,153,0.3)]">{formatCurrency(r.total)}</div>
+                         </div>
+                       </div>
+                       <div className="space-y-2">
+                         {r.items.map((item, idx) => (
+                           <div key={idx} className="flex justify-between items-start text-xs">
+                             <span className="text-slate-300 pr-4">{item.title}</span>
+                             <span className="font-medium text-slate-100 tabular-nums whitespace-nowrap">{formatCurrency(item.amount)}</span>
+                           </div>
+                         ))}
+                       </div>
+                     </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {tab === 'settings' && (
             <div className="px-4 sm:px-0 space-y-4">
               <h2 className="text-xl font-bold text-slate-100 flex items-center mb-2"><Settings size={20} className="mr-2 text-cyan-400"/> ตั้งค่าแอป</h2>
@@ -587,7 +642,7 @@ export default function App() {
         </main>
 
         <nav className="bg-[#161C2D]/80 backdrop-blur-xl border-t border-slate-800 p-2 flex justify-around sticky bottom-0 z-40 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
-          {[{ id: 'dashboard', icon: <Home size={22}/>, label: 'หน้าแรก' }, { id: 'expenses', icon: <CreditCard size={22}/>, label: 'บิล' }, { id: 'settings', icon: <Settings size={22}/>, label: 'ตั้งค่า' }].map(i => (
+          {[{ id: 'dashboard', icon: <Home size={22}/>, label: 'หน้าแรก' }, { id: 'expenses', icon: <CreditCard size={22}/>, label: 'บิล' }, { id: 'receipts', icon: <FileText size={22}/>, label: 'ใบเสร็จ' }, { id: 'settings', icon: <Settings size={22}/>, label: 'ตั้งค่า' }].map(i => (
             <button key={i.id} onClick={() => setTab(i.id)} className={`flex flex-col items-center p-2 rounded-xl w-16 transition-all ${tab === i.id ? 'text-cyan-400 bg-cyan-950/40 font-bold shadow-[0_0_10px_rgba(6,182,212,0.15)]' : 'text-slate-500 hover:text-slate-300'}`}>{i.icon}<span className="text-[10px] mt-1">{i.label}</span></button>
           ))}
         </nav>
