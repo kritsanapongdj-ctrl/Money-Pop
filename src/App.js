@@ -184,9 +184,38 @@ export default function App() {
   const [selectedForPay, setSelectedForPay] = useState({});
   const [splitModal, setSplitModal] = useState({ open: false, expId: null, members: [] });
   const [partialPayModal, setPartialPayModal] = useState({ open: false, exp: null, amount: '', payerId: '' });
-  const [receiptModal, setReceiptModal] = useState({ open: false, items: [], total: 0, date: null });
+  const [receiptModal, setReceiptModal] = useState({ open: false, items: [], total: 0, date: null, isHistory: false, rawExp: [] });
   const [currentUser, setCurrentUser] = useState(localStorage.getItem('moneyPopUser') || '');
+  const [showUserModal, setShowUserModal] = useState(!localStorage.getItem('moneyPopUser'));
   const [toast, setToast] = useState('');
+
+  const handleUndoReceipt = (receipt) => {
+    if (!currentUser) return showToast("⚠️ กรุณาเลือกชื่อ 'ผู้ทำรายการ' มุมขวาบนก่อน");
+    if (!window.confirm("คุณต้องการยกเลิกใบเสร็จนี้ และเปลี่ยนบิลทั้งหมดกลับไปเป็น 'รอชำระ' ใช่หรือไม่?")) return;
+    
+    const newExps = dbData.expenses.map(e => {
+      const ne = {...e};
+      const match = receipt.rawExp.filter(re => String(re.id) === String(e.id));
+      if (match.length > 0) {
+         match.forEach(m => {
+            if (m.type === 'single') {
+               ne.status = 'pending'; ne.paidMonth = null; ne.paidAt = null; ne.paidBy = null;
+            } else if (m.type === 'split') {
+               const ns = {...ne.splitDetails};
+               if (ns[m.splitId]) {
+                  ns[m.splitId].paid = false; ns[m.splitId].paidMonth = null; ns[m.splitId].paidAt = null; ns[m.splitId].paidBy = null;
+               }
+               ne.splitDetails = ns;
+               ne.status = Object.values(ns).every(v=>v.paid) ? 'paid' : 'pending';
+            }
+         });
+      }
+      return ne;
+    });
+    updateDB({ expenses: newExps });
+    setReceiptModal({ open: false });
+    showToast("ยกเลิกใบเสร็จเรียบร้อย");
+  };
 
   const fetchData = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true);
@@ -279,17 +308,19 @@ export default function App() {
     const receipts = {};
     dbData.expenses.forEach(e => {
       if (e.payerType === 'single' && e.status === 'paid' && e.paidAt) {
-        if (!receipts[e.paidAt]) receipts[e.paidAt] = { date: e.paidAt, items: [], total: 0, by: e.paidBy };
+        if (!receipts[e.paidAt]) receipts[e.paidAt] = { date: e.paidAt, items: [], total: 0, by: e.paidBy, rawExp: [] };
         receipts[e.paidAt].items.push({ title: e.title, amount: parseFloat(e.totalAmount) || 0 });
         receipts[e.paidAt].total += parseFloat(e.totalAmount) || 0;
+        receipts[e.paidAt].rawExp.push({ id: e.id, type: 'single' });
         if (!receipts[e.paidAt].by && e.paidBy) receipts[e.paidAt].by = e.paidBy;
       } else if (e.payerType === 'split') {
         Object.entries(e.splitDetails).forEach(([id, d]) => {
           if (d.paid && d.paidAt) {
-            if (!receipts[d.paidAt]) receipts[d.paidAt] = { date: d.paidAt, items: [], total: 0, by: d.paidBy };
+            if (!receipts[d.paidAt]) receipts[d.paidAt] = { date: d.paidAt, items: [], total: 0, by: d.paidBy, rawExp: [] };
             const mName = dbData.members.find(m => String(m.id) === String(id))?.name || '';
             receipts[d.paidAt].items.push({ title: `${e.title} (${mName})`, amount: parseFloat(d.amount) || 0 });
             receipts[d.paidAt].total += parseFloat(d.amount) || 0;
+            receipts[d.paidAt].rawExp.push({ id: e.id, type: 'split', splitId: id });
             if (!receipts[d.paidAt].by && d.paidBy) receipts[d.paidAt].by = d.paidBy;
           }
         });
@@ -453,10 +484,9 @@ export default function App() {
         <header className="bg-[#161C2D]/90 backdrop-blur-md px-4 py-3 flex justify-between items-center border-b border-slate-800/80 z-30">
           <div className="text-xl font-black text-slate-100 flex items-center tracking-tight"><Zap size={20} className="mr-1 text-pink-500 drop-shadow-[0_0_8px_rgba(236,72,153,0.8)]" /> MONEY<span className="text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]">-POP</span></div>
           <div className="flex items-center gap-3">
-            <select value={currentUser} onChange={e=>{setCurrentUser(e.target.value); localStorage.setItem('moneyPopUser', e.target.value);}} className="bg-[#0B0F19] text-xs font-bold border border-slate-700 text-slate-300 rounded-lg px-2 py-1 focus:border-cyan-500 outline-none shadow-inner">
-              <option value="">👤 ผู้ทำรายการ...</option>
-              {dbData.members.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
-            </select>
+            <button onClick={()=>setShowUserModal(true)} className="bg-cyan-900/30 text-cyan-400 border border-cyan-500/50 px-3 py-1.5 rounded-xl font-bold flex items-center shadow-[0_0_10px_rgba(6,182,212,0.2)] text-xs hover:bg-cyan-900/50 transition">
+              <Users size={14} className="mr-1.5"/> {currentUser ? (dbData.members.find(m=>String(m.id)===String(currentUser))?.name || 'เลือกผู้ใช้') : 'เลือกผู้ใช้'}
+            </button>
             {isSyncing ? <RefreshCw size={18} className="animate-spin text-cyan-500" /> : <button onClick={()=>fetchData(true)} className="text-slate-400 hover:text-cyan-400 transition-colors"><RefreshCw size={18}/></button>}
           </div>
         </header>
@@ -600,13 +630,9 @@ export default function App() {
                            <div className="text-lg font-black text-pink-400 drop-shadow-[0_0_5px_rgba(236,72,153,0.3)]">{formatCurrency(r.total)}</div>
                          </div>
                        </div>
-                       <div className="space-y-2">
-                         {r.items.map((item, idx) => (
-                           <div key={idx} className="flex justify-between items-start text-xs">
-                             <span className="text-slate-300 pr-4">{item.title}</span>
-                             <span className="font-medium text-slate-100 tabular-nums whitespace-nowrap">{formatCurrency(item.amount)}</span>
-                           </div>
-                         ))}
+                       <div className="mt-3 pt-3 border-t border-slate-800/50 flex justify-between items-center">
+                         <span className="text-xs text-slate-400 font-medium">ทำรายการทั้งหมด {r.items.length} บิล</span>
+                         <button onClick={() => setReceiptModal({open: true, ...r, isHistory: true})} className="bg-cyan-900/40 text-cyan-400 border border-cyan-500/50 px-4 py-2 rounded-xl text-xs font-bold hover:bg-cyan-900/60 transition shadow-[0_0_10px_rgba(6,182,212,0.15)] flex items-center"><FileText size={14} className="mr-1"/> ดูใบเสร็จ</button>
                        </div>
                      </div>
                   ))}
@@ -695,11 +721,11 @@ export default function App() {
              
              <div className="text-center mb-6 pt-2 relative z-10">
                <div className="mx-auto w-12 h-12 bg-cyan-900/50 rounded-full flex items-center justify-center mb-3 shadow-[0_0_15px_rgba(6,182,212,0.5)] border border-cyan-400">
-                 <Check size={24} className="text-cyan-400" />
+                 {receiptModal.isHistory ? <FileText size={24} className="text-cyan-400" /> : <Check size={24} className="text-cyan-400" />}
                </div>
-               <h2 className="text-xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-pink-400 drop-shadow-sm">PAYMENT SUCCESS</h2>
+               <h2 className="text-xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-pink-400 drop-shadow-sm">{receiptModal.isHistory ? 'RECEIPT DETAILS' : 'PAYMENT SUCCESS'}</h2>
                <p className="text-xs text-slate-400 mt-1">{new Date(receiptModal.date).toLocaleString('th-TH')}</p>
-               <p className="text-xs text-slate-500 mt-1">ทำรายการโดย: <span className="text-cyan-400 font-bold">{dbData.members.find(m=>String(m.id)===String(currentUser))?.name || 'ไม่ระบุ'}</span></p>
+               <p className="text-xs text-slate-500 mt-1">ทำรายการโดย: <span className="text-cyan-400 font-bold">{dbData.members.find(m=>String(m.id)===String(receiptModal.isHistory ? receiptModal.by : currentUser))?.name || 'ไม่ระบุ'}</span></p>
              </div>
              
              <div className="border-t border-dashed border-slate-700 my-4 relative z-10"></div>
@@ -720,9 +746,37 @@ export default function App() {
                <span className="font-black text-pink-400 drop-shadow-[0_0_5px_rgba(236,72,153,0.5)]">{formatCurrency(receiptModal.total)}</span>
              </div>
              
-             <div className="mt-8 relative z-10">
-               <button onClick={()=>setReceiptModal({open: false})} className={`${theme.button} w-full py-3`}>ปิดใบเสร็จ</button>
+             <div className="mt-8 relative z-10 flex gap-3">
+               <button onClick={()=>setReceiptModal({open: false})} className={`${theme.button} flex-1 py-3`}>ปิดหน้าต่าง</button>
+               {receiptModal.isHistory && (
+                 <button onClick={() => handleUndoReceipt(receiptModal)} className="flex-1 py-3 bg-rose-500/20 text-rose-400 border border-rose-500/50 rounded-xl font-bold hover:bg-rose-500/30 transition shadow-sm">ยกเลิกใบเสร็จ</button>
+               )}
              </div>
+          </div>
+        </div>
+      )}
+      {showUserModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-[#161C2D] border border-cyan-500 w-full max-w-sm rounded-3xl p-8 shadow-[0_0_50px_rgba(6,182,212,0.3)] text-center relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-pink-500/10 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none"></div>
+            
+            <div className="mx-auto w-16 h-16 bg-cyan-900/50 rounded-full flex items-center justify-center mb-4 shadow-[0_0_20px_rgba(6,182,212,0.5)] border border-cyan-400 relative z-10">
+              <Users size={32} className="text-cyan-400" />
+            </div>
+            <h2 className="text-2xl font-black text-slate-100 mb-2 relative z-10">ยินดีต้อนรับ!</h2>
+            <p className="text-slate-400 mb-6 text-sm relative z-10">กรุณาระบุว่าคุณคือใคร เพื่อใช้บันทึกประวัติการทำรายการ</p>
+            
+            <div className="space-y-3 relative z-10">
+              {dbData.members.map(m => (
+                <button key={m.id} onClick={() => { setCurrentUser(m.id); localStorage.setItem('moneyPopUser', m.id); setShowUserModal(false); }} className={`w-full py-4 rounded-xl font-bold transition-all text-lg flex items-center justify-center ${currentUser === String(m.id) ? 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.5)]' : 'bg-[#0B0F19] text-slate-300 border border-slate-800 hover:border-cyan-500 hover:text-cyan-400'}`}>
+                  {m.name}
+                </button>
+              ))}
+            </div>
+            {currentUser && (
+              <button onClick={() => setShowUserModal(false)} className="mt-6 text-slate-500 hover:text-slate-300 underline text-sm relative z-10">ปิดหน้าต่าง</button>
+            )}
           </div>
         </div>
       )}
