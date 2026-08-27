@@ -14,10 +14,12 @@ import {
 const GAS_URL = "https://script.google.com/macros/s/AKfycbzbO-BbqufnRT6kZ1j8u8PLmhxPM3MSCY_VRZIUOsV6KlGIbGeOAgBVH_7HnVBSvSne/exec"; 
 
 const theme = {
-  bg: "bg-[#0B0F19] text-slate-100", card: "bg-[#161C2D]/80 backdrop-blur-md shadow-[0_4px_30px_rgba(0,0,0,0.1)] border border-slate-800/60 rounded-3xl",
-  primary: "text-cyan-400 drop-shadow-[0_0_5px_rgba(6,182,212,0.4)]", button: "bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)] rounded-xl font-bold transition-all active:scale-95",
-  input: "bg-[#0B0F19] border border-slate-800 text-slate-100 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 rounded-xl p-3 w-full outline-none placeholder:text-slate-500",
-  chartColors: ['#06b6d4', '#ec4899', '#8b5cf6', '#3b82f6', '#10b981'] 
+  bg: "bg-[#1a1c29] text-[#e2e8f0]", 
+  card: "bg-[#25283d]/90 backdrop-blur-md shadow-xl border border-[#3f4366]/50 rounded-3xl",
+  primary: "text-[#f472b6] drop-shadow-[0_0_5px_rgba(244,114,182,0.5)]", 
+  button: "bg-gradient-to-r from-[#d946ef] to-[#f43f5e] hover:from-[#c026d3] hover:to-[#e11d48] text-white shadow-[0_0_15px_rgba(217,70,239,0.3)] rounded-xl font-bold transition-all active:scale-95",
+  input: "bg-[#161824] border border-[#3f4366] text-slate-100 focus:border-[#f472b6] focus:ring-2 focus:ring-[#f472b6]/30 rounded-xl p-3 w-full outline-none placeholder:text-slate-500 transition-colors",
+  chartColors: ['#f472b6', '#38bdf8', '#fbbf24', '#a78bfa', '#34d399']
 };
 
 const formatCurrency = (amount) => new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(parseFloat(amount) || 0);
@@ -187,6 +189,7 @@ export default function App() {
   const [receiptModal, setReceiptModal] = useState({ open: false, items: [], total: 0, date: null, isHistory: false, rawExp: [] });
   const [currentUser, setCurrentUser] = useState(localStorage.getItem('moneyPopUser') || '');
   const [showUserModal, setShowUserModal] = useState(!localStorage.getItem('moneyPopUser'));
+  const [expenseTab, setExpenseTab] = useState('pending');
   const [toast, setToast] = useState('');
 
   const handleUndoReceipt = (receipt) => {
@@ -479,23 +482,23 @@ export default function App() {
   if (isLoading) return <div className="min-h-screen flex items-center justify-center font-bold text-cyan-400 bg-[#0B0F19]">กำลังโหลด...</div>;
 
   return (
-    <div className={`min-h-[100dvh] ${theme.bg}`}>
-      <div className="max-w-md sm:max-w-3xl lg:max-w-5xl mx-auto flex flex-col h-[100dvh] bg-[#0B0F19] border-x border-slate-800 shadow-2xl shadow-cyan-900/10">
-        <header className="bg-[#161C2D]/90 backdrop-blur-md px-4 py-3 flex justify-between items-center border-b border-slate-800/80 z-30">
-          <div className="text-xl font-black text-slate-100 flex items-center tracking-tight"><Zap size={20} className="mr-1 text-pink-500 drop-shadow-[0_0_8px_rgba(236,72,153,0.8)]" /> MONEY<span className="text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]">-POP</span></div>
+    <div className={`min-h-[100dvh] ${theme.bg} font-sans`}>
+      <div className="max-w-md sm:max-w-3xl lg:max-w-5xl mx-auto flex flex-col h-[100dvh] bg-[#1a1c29] border-x border-[#25283d] shadow-2xl shadow-pink-900/10">
+        <header className="bg-[#1a1c29]/90 backdrop-blur-md px-4 py-3 flex justify-between items-center border-b border-[#3f4366]/80 z-30">
+          <div className="text-xl font-black text-slate-100 flex items-center tracking-tight"><Zap size={20} className="mr-1 text-pink-400 drop-shadow-[0_0_8px_rgba(236,72,153,0.8)]" /> MONEY<span className="text-[#38bdf8] drop-shadow-[0_0_8px_rgba(56,189,248,0.6)]">-POP</span></div>
           <div className="flex items-center gap-3">
-            <button onClick={()=>setShowUserModal(true)} className="bg-cyan-900/30 text-cyan-400 border border-cyan-500/50 px-3 py-1.5 rounded-xl font-bold flex items-center shadow-[0_0_10px_rgba(6,182,212,0.2)] text-xs hover:bg-cyan-900/50 transition">
+            <button onClick={()=>setShowUserModal(true)} className="bg-[#f472b6]/20 text-[#f472b6] border border-[#f472b6]/50 px-3 py-1.5 rounded-xl font-bold flex items-center shadow-[0_0_10px_rgba(244,114,182,0.2)] text-xs hover:bg-[#f472b6]/30 transition">
               <Users size={14} className="mr-1.5"/> {currentUser ? (dbData.members.find(m=>String(m.id)===String(currentUser))?.name || 'เลือกผู้ใช้') : 'เลือกผู้ใช้'}
             </button>
-            {isSyncing ? <RefreshCw size={18} className="animate-spin text-cyan-500" /> : <button onClick={()=>fetchData(true)} className="text-slate-400 hover:text-cyan-400 transition-colors"><RefreshCw size={18}/></button>}
+            {isSyncing ? <RefreshCw size={18} className="animate-spin text-[#f472b6]" /> : <button onClick={()=>fetchData(true)} className="text-slate-400 hover:text-[#f472b6] transition-colors"><RefreshCw size={18}/></button>}
           </div>
         </header>
 
         <main className="flex-1 overflow-y-auto sm:p-6 pb-20 custom-scrollbar">
-          <div className="sticky top-0 bg-[#0B0F19]/80 backdrop-blur-xl z-10 px-4 py-3 border-b border-slate-800/50 mb-4 flex gap-2 shadow-sm">
-            <input type="month" value={filters.month} onChange={e=>setFilters({...filters, month: e.target.value})} className="bg-[#161C2D] border border-slate-700 text-slate-200 rounded-lg px-3 py-2 text-sm font-medium w-1/3 focus:border-cyan-500 outline-none" />
-            <select value={filters.payer} onChange={e=>setFilters({...filters, payer: e.target.value})} className="bg-[#161C2D] border border-slate-700 text-slate-200 rounded-lg px-2 py-2 text-sm w-1/3 focus:border-cyan-500 outline-none"><option value="">👤 ทุกคน</option>{dbData.members.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select>
-            <select value={filters.category} onChange={e=>setFilters({...filters, category: e.target.value})} className="bg-[#161C2D] border border-slate-700 text-slate-200 rounded-lg px-2 py-2 text-sm w-1/3 focus:border-cyan-500 outline-none"><option value="">📁 หมวด</option>{dbData.categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
+          <div className="sticky top-0 bg-[#1a1c29]/90 backdrop-blur-xl z-10 px-4 py-3 border-b border-[#3f4366]/50 mb-4 flex gap-2 shadow-sm">
+            <input type="month" value={filters.month} onChange={e=>setFilters({...filters, month: e.target.value})} className="bg-[#25283d] border border-[#3f4366] text-slate-200 rounded-xl px-3 py-2 text-sm font-medium w-1/3 focus:border-[#f472b6] outline-none transition-colors" />
+            <select value={filters.payer} onChange={e=>setFilters({...filters, payer: e.target.value})} className="bg-[#25283d] border border-[#3f4366] text-slate-200 rounded-xl px-2 py-2 text-sm w-1/3 focus:border-[#f472b6] outline-none transition-colors"><option value="">👤 ทุกคน</option>{dbData.members.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select>
+            <select value={filters.category} onChange={e=>setFilters({...filters, category: e.target.value})} className="bg-[#25283d] border border-[#3f4366] text-slate-200 rounded-xl px-2 py-2 text-sm w-1/3 focus:border-[#f472b6] outline-none transition-colors"><option value="">📁 หมวด</option>{dbData.categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
           </div>
 
           {tab === 'dashboard' && (() => {
@@ -533,17 +536,17 @@ export default function App() {
             const barData = Object.keys(cMap).map(k=>({n:k, v:cMap[k]}));
             return (
               <div className="px-4 sm:px-0 space-y-4">
-                <div className={`${theme.card} p-5 bg-gradient-to-br from-[#1e1b4b] via-[#0f172a] to-[#082f49] text-white border-cyan-500/30 relative overflow-hidden`}>
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/20 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
-                  <div className="absolute bottom-0 left-0 w-32 h-32 bg-pink-500/10 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none"></div>
-                  <p className="text-cyan-100/80 text-sm mb-1 font-medium z-10 relative">ยอดใช้จ่ายรวมเดือนนี้</p>
-                  <h2 className="text-4xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-white drop-shadow-[0_2px_10px_rgba(6,182,212,0.3)] z-10 relative">{formatCurrency(tPaid + tPend)}</h2>
-                  <div className="grid grid-cols-2 gap-3 z-10 relative"><div className="bg-[#0B0F19]/60 backdrop-blur-md p-3 rounded-xl border-l-4 border-cyan-500 shadow-inner"><p className="text-xs font-bold text-slate-400">ชำระแล้ว</p><p className="text-lg font-black text-cyan-400">{formatCurrency(tPaid)}</p></div><div className="bg-[#0B0F19]/60 backdrop-blur-md p-3 rounded-xl border-l-4 border-pink-500 shadow-inner"><p className="text-xs font-bold text-slate-400">รอชำระ</p><p className="text-lg font-black text-pink-400">{formatCurrency(tPend)}</p></div></div>
+                <div className={`${theme.card} p-5 bg-gradient-to-br from-[#2e1065] via-[#1e1b4b] to-[#4c1d95] text-white border-[#8b5cf6]/30 relative overflow-hidden`}>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-[#fbbf24]/20 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                  <div className="absolute bottom-0 left-0 w-32 h-32 bg-[#f472b6]/20 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none"></div>
+                  <p className="text-[#a78bfa] text-sm mb-1 font-medium z-10 relative">ยอดใช้จ่ายรวมเดือนนี้</p>
+                  <h2 className="text-4xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-[#f472b6] to-[#fbbf24] drop-shadow-[0_2px_10px_rgba(244,114,182,0.3)] z-10 relative">{formatCurrency(tPaid + tPend)}</h2>
+                  <div className="grid grid-cols-2 gap-3 z-10 relative"><div className="bg-[#1a1c29]/60 backdrop-blur-md p-3 rounded-xl border-l-4 border-[#34d399] shadow-inner"><p className="text-xs font-bold text-slate-400">ชำระแล้ว</p><p className="text-lg font-black text-[#34d399]">{formatCurrency(tPaid)}</p></div><div className="bg-[#1a1c29]/60 backdrop-blur-md p-3 rounded-xl border-l-4 border-[#f472b6] shadow-inner"><p className="text-xs font-bold text-slate-400">รอชำระ</p><p className="text-lg font-black text-[#f472b6]">{formatCurrency(tPend)}</p></div></div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className={`${theme.card} p-4 h-64`}><h3 className="text-sm font-bold text-cyan-400 mb-2">แยกตามหมวดหมู่</h3><ResponsiveContainer><BarChart data={barData} layout="vertical" margin={{left:10}}><XAxis type="number" hide /><YAxis dataKey="n" type="category" width={70} tick={{fontSize:11, fill:'#94a3b8'}}/><RechartsTooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{backgroundColor: '#0B0F19', border: '1px solid #1e293b', borderRadius: '8px', color: '#f1f5f9'}} formatter={v=>formatCurrency(v)}/><Bar dataKey="v" radius={[0,4,4,0]} barSize={20}>{barData.map((entry, index) => <Cell key={`cell-${index}`} fill={theme.chartColors[index % theme.chartColors.length]} />)}</Bar></BarChart></ResponsiveContainer>
+                  <div className={`${theme.card} p-4 h-64`}><h3 className="text-sm font-bold text-[#f472b6] mb-2">แยกตามหมวดหมู่</h3><ResponsiveContainer><BarChart data={barData} layout="vertical" margin={{left:10}}><XAxis type="number" hide /><YAxis dataKey="n" type="category" width={70} tick={{fontSize:11, fill:'#94a3b8'}}/><RechartsTooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{backgroundColor: '#1a1c29', border: '1px solid #3f4366', borderRadius: '12px', color: '#f1f5f9'}} formatter={v=>formatCurrency(v)}/><Bar dataKey="v" radius={[0,4,4,0]} barSize={20}>{barData.map((entry, index) => <Cell key={`cell-${index}`} fill={theme.chartColors[index % theme.chartColors.length]} />)}</Bar></BarChart></ResponsiveContainer>
                   </div>
-                  {!filters.payer && <div className={`${theme.card} p-4 h-64`}><h3 className="text-sm font-bold text-cyan-400 mb-2">แยกรายบุคคล</h3><ResponsiveContainer><PieChart><Pie data={Object.keys(mMap).map(k=>({n:k, v:mMap[k]}))} dataKey="v" nameKey="n" innerRadius={40} outerRadius={70} stroke="none">{Object.keys(mMap).map((_,i)=><Cell key={i} fill={theme.chartColors[i%5]}/>)}</Pie><RechartsTooltip contentStyle={{backgroundColor: '#0B0F19', border: '1px solid #1e293b', borderRadius: '8px', color: '#f1f5f9'}} formatter={v=>formatCurrency(v)}/><Legend iconType="circle" wrapperStyle={{fontSize:'12px', color:'#cbd5e1'}}/></PieChart></ResponsiveContainer></div>}
+                  {!filters.payer && <div className={`${theme.card} p-4 h-64`}><h3 className="text-sm font-bold text-[#f472b6] mb-2">แยกรายบุคคล</h3><ResponsiveContainer><PieChart><Pie data={Object.keys(mMap).map(k=>({n:k, v:mMap[k]}))} dataKey="v" nameKey="n" innerRadius={40} outerRadius={70} stroke="none">{Object.keys(mMap).map((_,i)=><Cell key={i} fill={theme.chartColors[i%5]}/>)}</Pie><RechartsTooltip contentStyle={{backgroundColor: '#1a1c29', border: '1px solid #3f4366', borderRadius: '12px', color: '#f1f5f9'}} formatter={v=>formatCurrency(v)}/><Legend iconType="circle" wrapperStyle={{fontSize:'12px', color:'#cbd5e1'}}/></PieChart></ResponsiveContainer></div>}
                 </div>
               </div>
             );
@@ -551,8 +554,14 @@ export default function App() {
 
           {tab === 'expenses' && (
             <div className="px-4 sm:px-0">
-              <div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-slate-100 flex items-center"><Zap size={20} className="mr-2 text-cyan-400"/> รายการบิลทั้งหมด</h2><button onClick={() => setModal({open:true, edit:null})} className={`${theme.button} px-4 py-2 flex items-center text-sm`}><Plus size={16} className="mr-1"/>เพิ่มบิล</button></div>
-              {Object.keys(selectedForPay).length > 0 && <div className="sticky top-16 z-20 bg-[#161C2D]/90 backdrop-blur-md p-4 rounded-xl border border-cyan-500 shadow-[0_0_25px_rgba(6,182,212,0.2)] flex justify-between items-center mb-4 animate-fadeIn"><div><span className="text-cyan-400 text-xs font-bold">เลือกชำระ {Object.keys(selectedForPay).length} รายการ</span><p className="text-slate-100 text-xl font-black">{formatCurrency(Object.values(selectedForPay).reduce((s,i)=>s+(parseFloat(i.amount)||0),0))}</p></div><button onClick={bulkPay} className={`${theme.button} px-5 py-2`}>ยืนยันชำระ</button></div>}
+              <div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-slate-100 flex items-center"><Zap size={20} className="mr-2 text-[#f472b6]"/> รายการบิลทั้งหมด</h2><button onClick={() => setModal({open:true, edit:null})} className={`${theme.button} px-4 py-2 flex items-center text-sm`}><Plus size={16} className="mr-1"/>เพิ่มบิล</button></div>
+              
+              <div className="flex bg-[#25283d] rounded-xl p-1 mb-4 shadow-inner border border-[#3f4366]">
+                 <button onClick={()=>setExpenseTab('pending')} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${expenseTab==='pending'?'bg-[#3f4366] text-[#f472b6] shadow-sm':'text-slate-400 hover:text-slate-200'}`}>รอชำระ (To Pay)</button>
+                 <button onClick={()=>setExpenseTab('paid')} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${expenseTab==='paid'?'bg-[#3f4366] text-[#34d399] shadow-sm':'text-slate-400 hover:text-slate-200'}`}>ชำระแล้ว (History)</button>
+              </div>
+
+              {Object.keys(selectedForPay).length > 0 && expenseTab === 'pending' && <div className="sticky top-16 z-20 bg-[#25283d]/90 backdrop-blur-md p-4 rounded-xl border border-[#f472b6] shadow-[0_0_25px_rgba(244,114,182,0.2)] flex justify-between items-center mb-4 animate-fadeIn"><div><span className="text-[#f472b6] text-xs font-bold">เลือกชำระ {Object.keys(selectedForPay).length} รายการ</span><p className="text-slate-100 text-xl font-black">{formatCurrency(Object.values(selectedForPay).reduce((s,i)=>s+(parseFloat(i.amount)||0),0))}</p></div><button onClick={bulkPay} className={`${theme.button} px-5 py-2`}>ยืนยันชำระ</button></div>}
               <div className="space-y-3">
                 {filteredExps.map(e => {
                   const cat = dbData.categories.find(c=>String(c.id)===String(e.categoryId));
@@ -569,15 +578,19 @@ export default function App() {
                     }
                   }
                   const isPd = filters.month ? (st === 'paid' && pMonth === filters.month) : (st === 'paid');
+                  
+                  if (expenseTab === 'pending' && isPd) return null;
+                  if (expenseTab === 'paid' && !isPd) return null;
+
                   return (
-                    <div key={e.id} className={`${theme.card} p-4 flex justify-between items-center transition-all ${isPd?'opacity-50 grayscale-[50%]':selectedForPay[e.id]?'ring-2 ring-cyan-400 bg-cyan-900/10 shadow-[0_0_15px_rgba(6,182,212,0.15)]':'hover:border-slate-700'}`}>
+                    <div key={e.id} className={`${theme.card} p-4 flex justify-between items-center transition-all ${isPd?'opacity-70 bg-[#1a1c29]/50':selectedForPay[e.id]?'ring-2 ring-[#f472b6] bg-[#f472b6]/10 shadow-[0_0_15px_rgba(244,114,182,0.15)]':'hover:border-[#f472b6]/50'}`}>
                       <div className="flex items-center w-2/3 cursor-pointer" onClick={() => { if(st !== 'paid') togglePay(e); }}>
-                        {st !== 'paid' && <input type="checkbox" checked={!!selectedForPay[e.id]} readOnly className="w-5 h-5 mr-3 accent-cyan-500 rounded bg-[#0B0F19] border-slate-700 cursor-pointer pointer-events-none" />}
-                        <div className={`p-2 rounded-xl mr-3 shadow-inner ${isPd ? 'bg-slate-800/50' : 'bg-[#0B0F19] border border-slate-800'}`}>{getIconForCategory(cat?.name)}</div>
+                        {st !== 'paid' && <input type="checkbox" checked={!!selectedForPay[e.id]} readOnly className="w-5 h-5 mr-3 accent-[#f472b6] rounded bg-[#161824] border-[#3f4366] cursor-pointer pointer-events-none" />}
+                        <div className={`p-2 rounded-xl mr-3 shadow-inner ${isPd ? 'bg-[#25283d]' : 'bg-[#1a1c29] border border-[#3f4366]'}`}>{getIconForCategory(cat?.name)}</div>
                         <div className="truncate">
                           <h3 className={`font-bold text-sm truncate text-slate-200 ${isPd?'line-through text-slate-500':''}`}>
-                            {e.title} {e.paymentType==='installment' && <span className="text-[10px] bg-pink-950/50 text-pink-400 border border-pink-900/50 px-2 rounded-full ml-1">{e.currentInstallment}/{e.installmentMonths}</span>}
-                            {filters.month && e.month < filters.month && !isPd && <span className="ml-2 text-[10px] bg-pink-900/40 text-pink-400 px-1.5 py-0.5 rounded border border-pink-700/50">ค้างชำระจาก {e.month}</span>}
+                            {e.title} {e.paymentType==='installment' && <span className="text-[10px] bg-pink-900/30 text-[#f472b6] border border-[#f472b6]/30 px-2 rounded-full ml-1">{e.currentInstallment}/{e.installmentMonths}</span>}
+                            {filters.month && e.month < filters.month && !isPd && <span className="ml-2 text-[10px] bg-rose-900/40 text-rose-400 px-1.5 py-0.5 rounded border border-rose-700/50">ค้างชำระจาก {e.month}</span>}
                             {filters.month && e.month < filters.month && isPd && <span className="ml-2 text-[10px] bg-emerald-900/40 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-700/50">ชำระแล้ว (จาก {e.month})</span>}
                             {filters.month && e.month === filters.month && pMonth && pMonth > filters.month && <span className="ml-2 text-[10px] bg-amber-900/40 text-amber-400 px-1.5 py-0.5 rounded border border-amber-700/50">ชำระล่าช้า ({pMonth})</span>}
                           </h3>
@@ -591,17 +604,17 @@ export default function App() {
                         </div>
                       </div>
                       <div className="flex flex-col items-end text-right">
-                        <span className={`font-black ${isPd?'text-slate-500':'text-cyan-300 drop-shadow-[0_0_5px_rgba(103,232,249,0.3)]'}`}>{formatCurrency(amt)}</span>
+                        <span className={`font-black ${isPd?'text-slate-500':'text-[#67e8f9] drop-shadow-[0_0_5px_rgba(103,232,249,0.3)]'}`}>{formatCurrency(amt)}</span>
                         <div className="flex items-center gap-2 mt-1">
-                          {isPd ? <span className="text-[10px] text-emerald-500 font-bold bg-emerald-950/30 px-2 py-0.5 rounded border border-emerald-900/50">ชำระแล้ว</span> : <span className="text-[10px] text-pink-500 font-bold bg-pink-950/30 px-2 py-0.5 rounded border border-pink-900/50">รอชำระ</span>}
+                          {isPd ? <span className="text-[10px] text-emerald-400 font-bold bg-emerald-900/30 px-2 py-0.5 rounded border border-emerald-900/50">ชำระแล้ว</span> : <span className="text-[10px] text-[#f472b6] font-bold bg-pink-900/30 px-2 py-0.5 rounded border border-pink-900/50">รอชำระ</span>}
                           {isPd && (
-                            <button onClick={(ev) => { ev.stopPropagation(); handleUndoPay(e); }} className="text-[10px] text-rose-500 font-bold bg-rose-950/30 px-2 py-0.5 rounded border border-rose-900/50 hover:bg-rose-900/50 transition-colors mr-1">ยกเลิกชำระ</button>
+                            <button onClick={(ev) => { ev.stopPropagation(); handleUndoPay(e); }} className="text-[10px] text-rose-400 font-bold bg-rose-900/30 px-2 py-0.5 rounded border border-rose-900/50 hover:bg-rose-900/50 transition-colors mr-1">ยกเลิกชำระ</button>
                           )}
                           {st !== 'paid' && e.paymentType !== 'installment' && (
-                            <button onClick={(ev) => { ev.stopPropagation(); setPartialPayModal({open:true, exp:e, amount:'', payerId: (e.payerType === 'split' && filters.payer) ? filters.payer : ''}); }} className="text-[10px] text-amber-500 font-bold bg-amber-950/30 px-2 py-0.5 rounded border border-amber-900/50 hover:bg-amber-900/50 transition-colors mr-1">แบ่งจ่าย</button>
+                            <button onClick={(ev) => { ev.stopPropagation(); setPartialPayModal({open:true, exp:e, amount:'', payerId: (e.payerType === 'split' && filters.payer) ? filters.payer : ''}); }} className="text-[10px] text-amber-400 font-bold bg-amber-900/30 px-2 py-0.5 rounded border border-amber-900/50 hover:bg-amber-900/50 transition-colors mr-1">แบ่งจ่าย</button>
                           )}
-                          <button onClick={(ev) => { ev.stopPropagation(); setModal({open:true, edit:e}); }} className="text-slate-500 hover:text-cyan-400 transition-colors"><Edit size={14}/></button>
-                          <button onClick={(ev) => { ev.stopPropagation(); if(window.confirm('ลบบิลนี้?')) updateDB({expenses: dbData.expenses.filter(x=>e.groupId?String(x.groupId)!==String(e.groupId):String(x.id)!==String(e.id))}); }} className="text-slate-500 hover:text-pink-500 transition-colors"><Trash2 size={14}/></button>
+                          <button onClick={(ev) => { ev.stopPropagation(); setModal({open:true, edit:e}); }} className="text-slate-400 hover:text-[#38bdf8] transition-colors"><Edit size={14}/></button>
+                          <button onClick={(ev) => { ev.stopPropagation(); if(window.confirm('ลบบิลนี้?')) updateDB({expenses: dbData.expenses.filter(x=>e.groupId?String(x.groupId)!==String(e.groupId):String(x.id)!==String(e.id))}); }} className="text-slate-400 hover:text-rose-400 transition-colors"><Trash2 size={14}/></button>
                         </div>
                       </div>
                     </div>
@@ -613,26 +626,26 @@ export default function App() {
 
           {tab === 'receipts' && (
             <div className="px-4 sm:px-0 space-y-4">
-              <div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-slate-100 flex items-center"><FileText size={20} className="mr-2 text-cyan-400"/> ประวัติใบเสร็จ</h2></div>
+              <div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-slate-100 flex items-center"><FileText size={20} className="mr-2 text-[#38bdf8]"/> ประวัติใบเสร็จ</h2></div>
               {receiptHistory.length === 0 ? (
                 <div className="text-center text-slate-500 py-10"><Clock size={40} className="mx-auto mb-3 opacity-50"/>ยังไม่มีประวัติใบเสร็จ</div>
               ) : (
                 <div className="space-y-4">
                   {receiptHistory.map(r => (
-                     <div key={r.date} className={`${theme.card} p-5 bg-gradient-to-br from-[#0B0F19] to-[#161C2D] border-slate-800 relative overflow-hidden`}>
-                       <div className="flex justify-between items-start mb-3 border-b border-slate-800 pb-3">
+                     <div key={r.date} className={`${theme.card} p-5 bg-gradient-to-br from-[#1a1c29] to-[#25283d] border-[#3f4366] relative overflow-hidden`}>
+                       <div className="flex justify-between items-start mb-3 border-b border-[#3f4366] pb-3">
                          <div>
                            <div className="text-xs text-slate-400 flex items-center mb-1"><Clock size={12} className="mr-1"/> {new Date(r.date).toLocaleString('th-TH')}</div>
-                           <div className="text-[10px] text-cyan-500 bg-cyan-950/40 px-2 py-0.5 rounded font-bold border border-cyan-900/50 inline-block mt-1">ทำรายการโดย: {dbData.members.find(m=>String(m.id)===String(r.by))?.name || 'ไม่ระบุ'}</div>
+                           <div className="text-[10px] text-[#38bdf8] bg-[#38bdf8]/10 px-2 py-0.5 rounded font-bold border border-[#38bdf8]/30 inline-block mt-1">ทำรายการโดย: {dbData.members.find(m=>String(m.id)===String(r.by))?.name || 'ไม่ระบุ'}</div>
                          </div>
                          <div className="text-right">
                            <div className="text-xs text-slate-500 uppercase font-bold">TOTAL</div>
-                           <div className="text-lg font-black text-pink-400 drop-shadow-[0_0_5px_rgba(236,72,153,0.3)]">{formatCurrency(r.total)}</div>
+                           <div className="text-lg font-black text-[#f472b6] drop-shadow-[0_0_5px_rgba(244,114,182,0.3)]">{formatCurrency(r.total)}</div>
                          </div>
                        </div>
-                       <div className="mt-3 pt-3 border-t border-slate-800/50 flex justify-between items-center">
+                       <div className="mt-3 pt-3 border-t border-[#3f4366]/50 flex justify-between items-center">
                          <span className="text-xs text-slate-400 font-medium">ทำรายการทั้งหมด {r.items.length} บิล</span>
-                         <button onClick={() => setReceiptModal({open: true, ...r, isHistory: true})} className="bg-cyan-900/40 text-cyan-400 border border-cyan-500/50 px-4 py-2 rounded-xl text-xs font-bold hover:bg-cyan-900/60 transition shadow-[0_0_10px_rgba(6,182,212,0.15)] flex items-center"><FileText size={14} className="mr-1"/> ดูใบเสร็จ</button>
+                         <button onClick={() => setReceiptModal({open: true, ...r, isHistory: true})} className="bg-[#38bdf8]/20 text-[#38bdf8] border border-[#38bdf8]/50 px-4 py-2 rounded-xl text-xs font-bold hover:bg-[#38bdf8]/30 transition shadow-sm flex items-center"><FileText size={14} className="mr-1"/> ดูใบเสร็จ</button>
                        </div>
                      </div>
                   ))}
@@ -643,11 +656,11 @@ export default function App() {
 
           {tab === 'settings' && (
             <div className="px-4 sm:px-0 space-y-4">
-              <h2 className="text-xl font-bold text-slate-100 flex items-center mb-2"><Settings size={20} className="mr-2 text-cyan-400"/> ตั้งค่าแอป</h2>
-              <div className={`${theme.card} p-5 bg-gradient-to-r from-[#0B0F19] to-[#161C2D] border-slate-800`}>
-                <h3 className={`font-bold text-cyan-400 mb-3 flex items-center drop-shadow-sm`}><Zap size={18} className="mr-2 text-pink-500"/>ระบบจัดการข้อมูล (Backup)</h3>
+              <h2 className="text-xl font-bold text-slate-100 flex items-center mb-2"><Settings size={20} className="mr-2 text-[#38bdf8]"/> ตั้งค่าแอป</h2>
+              <div className={`${theme.card} p-5 bg-gradient-to-r from-[#1a1c29] to-[#25283d] border-[#3f4366]`}>
+                <h3 className={`font-bold text-[#38bdf8] mb-3 flex items-center drop-shadow-sm`}><Zap size={18} className="mr-2 text-[#f472b6]"/>ระบบจัดการข้อมูล (Backup)</h3>
                 <div className="grid grid-cols-2 gap-3">
-                  <button onClick={handleExportData} className="flex flex-col items-center justify-center bg-[#0B0F19] p-3 rounded-xl border border-slate-700 text-cyan-400 hover:bg-slate-800 transition shadow-sm hover:border-cyan-500/50 hover:shadow-[0_0_10px_rgba(6,182,212,0.2)]">
+                  <button onClick={handleExportData} className="flex flex-col items-center justify-center bg-[#161824] p-3 rounded-xl border border-[#3f4366] text-[#38bdf8] hover:bg-[#25283d] transition shadow-sm hover:border-[#38bdf8]/50 hover:shadow-[0_0_10px_rgba(56,189,248,0.2)]">
                     <Download size={24} className="mb-1" />
                     <span className="text-sm font-bold">ดาวน์โหลด Backup</span>
                   </button>
@@ -668,9 +681,9 @@ export default function App() {
           )}
         </main>
 
-        <nav className="bg-[#161C2D]/80 backdrop-blur-xl border-t border-slate-800 p-2 flex justify-around sticky bottom-0 z-40 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
+        <nav className="bg-[#1a1c29]/90 backdrop-blur-xl border-t border-[#3f4366] p-2 flex justify-around sticky bottom-0 z-40 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
           {[{ id: 'dashboard', icon: <Home size={22}/>, label: 'หน้าแรก' }, { id: 'expenses', icon: <CreditCard size={22}/>, label: 'บิล' }, { id: 'receipts', icon: <FileText size={22}/>, label: 'ใบเสร็จ' }, { id: 'settings', icon: <Settings size={22}/>, label: 'ตั้งค่า' }].map(i => (
-            <button key={i.id} onClick={() => setTab(i.id)} className={`flex flex-col items-center p-2 rounded-xl w-16 transition-all ${tab === i.id ? 'text-cyan-400 bg-cyan-950/40 font-bold shadow-[0_0_10px_rgba(6,182,212,0.15)]' : 'text-slate-500 hover:text-slate-300'}`}>{i.icon}<span className="text-[10px] mt-1">{i.label}</span></button>
+            <button key={i.id} onClick={() => setTab(i.id)} className={`flex flex-col items-center p-2 rounded-xl w-16 transition-all ${tab === i.id ? 'text-[#f472b6] bg-[#f472b6]/10 font-bold shadow-[0_0_10px_rgba(244,114,182,0.15)] scale-110' : 'text-slate-500 hover:text-slate-300'}`}>{i.icon}<span className="text-[10px] mt-1">{i.label}</span></button>
           ))}
         </nav>
       </div>
