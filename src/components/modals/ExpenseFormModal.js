@@ -178,142 +178,177 @@ export default function ExpenseFormModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-[#161C2D] border border-slate-800/80 w-full max-w-md rounded-3xl p-6 shadow-[0_0_40px_rgba(0,0,0,0.5)] max-h-[90vh] overflow-y-auto custom-scrollbar">
-        <div className="flex justify-between items-center mb-5">
-          <h2 className={`text-xl font-bold ${theme.primary}`}>
-            {editingExpense ? 'แก้ไขบิล' : 'เพิ่มบิลใหม่'}
-          </h2>
-          <button onClick={close} className="text-slate-500 hover:text-slate-300">
-            <X />
+    <div className="fixed inset-0 bg-[#12161A]/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+      <div className="bg-white border-2 border-[#12161A] shadow-[8px_8px_0px_#12161A] w-full max-w-md rounded-2xl p-6 max-h-[90vh] overflow-y-auto custom-scrollbar">
+        <div className="flex justify-between items-center mb-5 pb-3 border-b-2 border-slate-100">
+          <div>
+            <span className="text-[10px] font-black tracking-widest text-[#2554FF] uppercase bg-[#EEF2FF] border border-[#2554FF]/40 px-2 py-0.5 rounded-full">
+              EXPENSE FORM
+            </span>
+            <h2 className="text-xl font-black text-[#12161A] tracking-tight mt-1">
+              {editingExpense ? 'แก้ไขรายการบิล' : 'สร้างรายการบิลใหม่'}
+            </h2>
+          </div>
+          <button 
+            onClick={close} 
+            className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 border border-[#12161A] flex items-center justify-center text-[#12161A] transition cursor-pointer"
+          >
+            <X size={18} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <input 
-            type="text" 
-            required 
-            value={formData.title} 
-            onChange={(e) => setFormData({ ...formData, title: e.target.value })} 
-            className={theme.input} 
-            placeholder="ชื่อรายการ" 
-          />
-
-          <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-black text-[#12161A] mb-1">ชื่อรายการบิล</label>
             <input 
-              type="month" 
+              type="text" 
               required 
-              value={formData.month} 
-              onChange={(e) => setFormData({ ...formData, month: e.target.value })} 
+              value={formData.title} 
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })} 
               className={theme.input} 
-            />
-            <input 
-              type="number" 
-              required 
-              step="0.01" 
-              placeholder="ยอดรวมบิล" 
-              value={formData.totalAmount} 
-              onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })} 
-              className={theme.input} 
+              placeholder="เช่น ค่าไฟ คอนโด, Netflix, อาหารเย็น..." 
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <select 
-              value={formData.categoryId} 
-              onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })} 
-              className={theme.input} 
-              required
-            >
-              <option value="">หมวดหมู่...</option>
-              {dbData.categories.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
+            <div>
+              <label className="block text-xs font-black text-[#12161A] mb-1">ประจำเดือน</label>
+              <input 
+                type="month" 
+                required 
+                value={formData.month} 
+                onChange={(e) => setFormData({ ...formData, month: e.target.value })} 
+                className={theme.input} 
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-black text-[#12161A] mb-1">ยอดรวมบิล (฿)</label>
+              <input 
+                type="number" 
+                required 
+                step="0.01" 
+                placeholder="0.00" 
+                value={formData.totalAmount} 
+                onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })} 
+                className={`${theme.input} font-mono`} 
+              />
+            </div>
+          </div>
 
-            <select 
-              value={formData.sourceId} 
-              onChange={(e) => setFormData({ ...formData, sourceId: e.target.value })} 
-              className={theme.input} 
-              required
-            >
-              <option value="">จ่ายจาก...</option>
-              {dbData.sources.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-black text-[#12161A] mb-1">หมวดหมู่</label>
+              <select 
+                value={formData.categoryId} 
+                onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })} 
+                className={theme.input} 
+                required
+              >
+                <option value="">เลือกหมวดหมู่...</option>
+                {dbData.categories.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-black text-[#12161A] mb-1">ช่องทางจ่าย</label>
+              <select 
+                value={formData.sourceId} 
+                onChange={(e) => setFormData({ ...formData, sourceId: e.target.value })} 
+                className={theme.input} 
+                required
+              >
+                <option value="">เลือกช่องทาง...</option>
+                {dbData.sources.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Payment Type */}
-          <div className="bg-[#0B0F19] p-3 rounded-xl border border-slate-800">
-            <div className="flex gap-4 mb-2">
-              <label className="flex items-center text-sm font-medium text-slate-300">
+          <div className="bg-[#F5F6F0] p-3.5 rounded-xl border-2 border-[#12161A] shadow-[2px_2px_0px_#12161A]">
+            <label className="block text-xs font-black text-[#12161A] mb-2 uppercase tracking-wide">
+              ประเภทการชำระ
+            </label>
+            <div className="flex gap-4">
+              <label className="flex items-center text-sm font-bold text-[#12161A] cursor-pointer">
                 <input 
                   type="radio" 
                   value="normal" 
                   checked={formData.paymentType === 'normal'} 
                   onChange={() => setFormData({ ...formData, paymentType: 'normal' })} 
-                  className="mr-2 accent-[#f472b6]" 
+                  className="mr-2 accent-[#2554FF] w-4 h-4 cursor-pointer" 
                 /> 
-                จ่ายเต็ม
+                จ่ายเต็มรอบเดียว
               </label>
-              <label className="flex items-center text-sm font-medium text-slate-300">
+              <label className="flex items-center text-sm font-bold text-[#12161A] cursor-pointer">
                 <input 
                   type="radio" 
                   value="installment" 
                   checked={formData.paymentType === 'installment'} 
                   onChange={() => setFormData({ ...formData, paymentType: 'installment' })} 
-                  className="mr-2 accent-[#f472b6]" 
+                  className="mr-2 accent-[#2554FF] w-4 h-4 cursor-pointer" 
                 /> 
-                ผ่อนชำระ
+                ผ่อนชำระหลายงวด
               </label>
             </div>
             {formData.paymentType === 'installment' && (
-              <div className="grid grid-cols-2 gap-3 mt-2">
-                <input 
-                  type="number" 
-                  placeholder="งวดปัจจุบัน" 
-                  required 
-                  min="1" 
-                  value={formData.currentInstallment || 1} 
-                  onChange={(e) => setFormData({ ...formData, currentInstallment: e.target.value })} 
-                  className={theme.input} 
-                />
-                <input 
-                  type="number" 
-                  placeholder="รวมกี่งวด" 
-                  required 
-                  min="2" 
-                  value={formData.installmentMonths} 
-                  onChange={(e) => setFormData({ ...formData, installmentMonths: e.target.value })} 
-                  className={theme.input} 
-                />
+              <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-300">
+                <div>
+                  <span className="block text-[11px] font-bold text-slate-600 mb-1">งวดปัจจุบัน</span>
+                  <input 
+                    type="number" 
+                    placeholder="1" 
+                    required 
+                    min="1" 
+                    value={formData.currentInstallment || 1} 
+                    onChange={(e) => setFormData({ ...formData, currentInstallment: e.target.value })} 
+                    className={theme.input} 
+                  />
+                </div>
+                <div>
+                  <span className="block text-[11px] font-bold text-slate-600 mb-1">รวมจำนวนงวด</span>
+                  <input 
+                    type="number" 
+                    placeholder="เช่น 10" 
+                    required 
+                    min="2" 
+                    value={formData.installmentMonths} 
+                    onChange={(e) => setFormData({ ...formData, installmentMonths: e.target.value })} 
+                    className={theme.input} 
+                  />
+                </div>
               </div>
             )}
           </div>
 
           {/* Payer Type */}
-          <div className="bg-[#f472b6]/10 p-3 rounded-xl border border-[#f472b6]/20">
-            <div className="flex gap-4 mb-2">
-              <label className="flex items-center text-sm font-medium text-slate-200">
+          <div className="bg-[#EEF2FF] p-3.5 rounded-xl border-2 border-[#12161A] shadow-[2px_2px_0px_#12161A]">
+            <label className="block text-xs font-black text-[#12161A] mb-2 uppercase tracking-wide">
+              ผู้รับผิดชอบค่าใช้จ่าย
+            </label>
+            <div className="flex gap-4 mb-2.5">
+              <label className="flex items-center text-sm font-bold text-[#12161A] cursor-pointer">
                 <input 
                   type="radio" 
                   value="single" 
                   checked={formData.payerType === 'single'} 
                   onChange={() => setFormData({ ...formData, payerType: 'single' })} 
-                  className="mr-2 accent-[#f472b6]" 
+                  className="mr-2 accent-[#2554FF] w-4 h-4 cursor-pointer" 
                 /> 
                 จ่ายคนเดียว
               </label>
-              <label className="flex items-center text-sm font-medium text-slate-200">
+              <label className="flex items-center text-sm font-bold text-[#12161A] cursor-pointer">
                 <input 
                   type="radio" 
                   value="split" 
                   checked={formData.payerType === 'split'} 
                   onChange={() => setFormData({ ...formData, payerType: 'split' })} 
-                  className="mr-2 accent-[#f472b6]" 
+                  className="mr-2 accent-[#2554FF] w-4 h-4 cursor-pointer" 
                 /> 
-                หารกัน
+                หารกัน (Split)
               </label>
             </div>
             {formData.payerType === 'single' ? (
@@ -323,20 +358,20 @@ export default function ExpenseFormModal({
                 className={theme.input} 
                 required
               >
-                <option value="">ผู้รับผิดชอบ...</option>
+                <option value="">เลือกสมาชิกที่ต้องจ่าย...</option>
                 {dbData.members.map((m) => (
                   <option key={m.id} value={m.id}>{m.name}</option>
                 ))}
               </select>
             ) : (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 pt-1">
                 {dbData.members.map((m) => (
-                  <label key={m.id} className="flex items-center text-sm text-slate-300">
+                  <label key={m.id} className="flex items-center text-xs font-bold text-[#12161A] bg-white border border-[#12161A] p-2 rounded-lg cursor-pointer">
                     <input 
                       type="checkbox" 
                       checked={Boolean(splitSelection[m.id])} 
                       onChange={(e) => setSplitSelection({ ...splitSelection, [m.id]: e.target.checked })} 
-                      className="mr-2 accent-[#f472b6]" 
+                      className="mr-2 accent-[#2554FF] w-4 h-4 cursor-pointer" 
                     /> 
                     {m.name}
                   </label>
@@ -345,8 +380,11 @@ export default function ExpenseFormModal({
             )}
           </div>
 
-          <button type="submit" className={`${theme.button} w-full py-3 mt-2 text-shadow-sm`}>
-            บันทึกบิล
+          <button 
+            type="submit" 
+            className="w-full py-3.5 bg-[#2554FF] hover:bg-[#1B40DF] text-white font-black border-2 border-[#12161A] shadow-[3px_3px_0px_#12161A] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none rounded-xl text-sm transition cursor-pointer"
+          >
+            {editingExpense ? 'บันทึกการแก้ไขบิล' : 'ยืนยันเพิ่มบิลใหม่'}
           </button>
         </form>
       </div>

@@ -1,6 +1,5 @@
 import React from 'react';
-import { Zap } from 'lucide-react';
-import { theme } from '../../constants/theme';
+import { Users2 } from 'lucide-react';
 import { formatCurrency } from '../../utils/currency';
 
 export default function SplitPayModal({ 
@@ -12,12 +11,21 @@ export default function SplitPayModal({
   if (!splitModal.open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
-      <div className="bg-[#161C2D] border border-slate-800 w-full max-w-sm rounded-3xl p-6 shadow-[0_0_40px_rgba(0,0,0,0.5)]">
-        <h3 className="text-lg font-bold text-slate-100 mb-4 flex items-center">
-          <Zap className="mr-2 text-[#f472b6]" /> เลือกผู้จ่าย
-        </h3>
-        <div className="space-y-2 mb-4 max-h-[50vh] overflow-y-auto custom-scrollbar">
+    <div className="fixed inset-0 bg-[#12161A]/70 backdrop-blur-sm z-[110] flex items-center justify-center p-4 animate-fadeIn">
+      <div className="bg-white border-2 border-[#12161A] shadow-[8px_8px_0px_#12161A] w-full max-w-sm rounded-2xl p-6">
+        <div className="flex items-center gap-2 mb-4 pb-2 border-b-2 border-slate-100">
+          <div className="w-8 h-8 rounded-lg bg-[#2554FF] text-white border-2 border-[#12161A] shadow-[1.5px_1.5px_0px_#12161A] flex items-center justify-center">
+            <Users2 size={16} />
+          </div>
+          <div>
+            <h3 className="text-base font-black text-[#12161A]">
+              เลือกผู้จ่ายเงิน (Split Pay)
+            </h3>
+            <p className="text-[11px] text-slate-500 font-medium">ระบุคนที่ต้องการชำระในรอบนี้</p>
+          </div>
+        </div>
+
+        <div className="space-y-2 mb-5 max-h-[45vh] overflow-y-auto custom-scrollbar pr-1">
           {(splitModal.avail || []).map((id) => {
             const member = members.find((m) => String(m.id) === String(id));
             const isChecked = splitModal.sel.includes(id);
@@ -26,9 +34,13 @@ export default function SplitPayModal({
             return (
               <label 
                 key={id} 
-                className="flex justify-between items-center p-3 border border-[#3f4366] bg-[#161824] rounded-xl hover:border-[#f472b6]/50 transition-colors cursor-pointer"
+                className={`flex justify-between items-center p-3 border-2 border-[#12161A] rounded-xl transition-all cursor-pointer ${
+                  isChecked 
+                    ? 'bg-[#EEF2FF] shadow-[2px_2px_0px_#12161A]' 
+                    : 'bg-white hover:bg-slate-50'
+                }`}
               >
-                <div className="flex items-center text-slate-200">
+                <div className="flex items-center text-[#12161A]">
                   <input 
                     type="checkbox" 
                     checked={isChecked} 
@@ -36,11 +48,11 @@ export default function SplitPayModal({
                       ...s,
                       sel: e.target.checked ? [...s.sel, id] : s.sel.filter((i) => i !== id)
                     }))} 
-                    className="mr-3 accent-[#f472b6] w-4 h-4" 
+                    className="mr-2.5 accent-[#2554FF] w-4 h-4 cursor-pointer" 
                   />
-                  <span className="font-medium">{member?.name || id}</span>
+                  <span className="font-bold text-xs">{member?.name || id}</span>
                 </div>
-                <span className="font-bold text-[#67e8f9] drop-shadow-[0_0_3px_rgba(103,232,249,0.3)]">
+                <span className="font-mono font-black text-xs text-[#2554FF]">
                   {formatCurrency(amount)}
                 </span>
               </label>
@@ -48,23 +60,24 @@ export default function SplitPayModal({
           })}
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex gap-2.5">
           <button 
             type="button"
             onClick={() => setSplitModal({ open: false, expId: null, members: [], sel: [], avail: [] })} 
-            className="flex-1 py-3 bg-[#0B0F19] text-slate-300 rounded-xl font-bold border border-slate-800 hover:bg-slate-800 transition"
+            className="flex-1 py-2.5 bg-white hover:bg-slate-100 text-[#12161A] rounded-xl font-black text-xs border-2 border-[#12161A] shadow-[2px_2px_0px_#12161A] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition cursor-pointer"
           >
             ยกเลิก
           </button>
           <button 
             type="button"
             onClick={onConfirm} 
-            className={`${theme.button} flex-1 py-3`}
+            className="flex-1 py-2.5 bg-[#2554FF] hover:bg-[#1B40DF] text-white rounded-xl font-black text-xs border-2 border-[#12161A] shadow-[2px_2px_0px_#12161A] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition cursor-pointer"
           >
-            ยืนยัน
+            ยืนยัน ({splitModal.sel.length} คน)
           </button>
         </div>
       </div>
     </div>
   );
 }
+

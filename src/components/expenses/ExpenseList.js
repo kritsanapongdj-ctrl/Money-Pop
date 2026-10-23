@@ -1,6 +1,5 @@
 import React from 'react';
-import { Zap, Plus, Inbox } from 'lucide-react';
-import { theme } from '../../constants/theme';
+import { Plus, Inbox, CheckCircle2, Clock, Layers } from 'lucide-react';
 import { formatCurrency } from '../../utils/currency';
 import ExpenseCard from './ExpenseCard';
 
@@ -50,65 +49,87 @@ export default function ExpenseList({
   return (
     <div className="px-4 sm:px-0">
       {/* Header bar */}
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold text-slate-100 flex items-center">
-          <Zap size={20} className="mr-2 text-[#f472b6]" /> รายการบิลทั้งหมด
-        </h2>
+      <div className="flex justify-between items-center mb-3">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-[#2554FF] text-white border-2 border-[#12161A] shadow-[1.5px_1.5px_0px_#12161A] flex items-center justify-center">
+            <Layers size={14} />
+          </div>
+          <h2 className="text-base sm:text-lg font-black text-[#12161A] tracking-tight">
+            รายการบิลค่าใช้จ่าย
+          </h2>
+          <span className="text-[10px] bg-white border border-[#12161A] text-slate-700 font-mono font-bold px-2 py-0.5 rounded-full">
+            {visibleExpenses.length} รายการ
+          </span>
+        </div>
+
         <button 
           onClick={onOpenCreateModal} 
-          className={`${theme.button} px-4 py-2 flex items-center text-sm`}
+          className="bg-[#2554FF] hover:bg-[#1B40DF] text-white font-black border-2 border-[#12161A] shadow-[2.5px_2.5px_0px_#12161A] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none px-3.5 py-1.5 rounded-xl flex items-center text-xs transition cursor-pointer"
         >
-          <Plus size={16} className="mr-1" /> เพิ่มบิล
+          <Plus size={15} className="mr-1 stroke-[3]" /> เพิ่มบิล
         </button>
       </div>
 
-      {/* Billbox Tab Toggle */}
-      <div className="flex bg-[#25283d] rounded-xl p-1 mb-4 shadow-inner border border-[#3f4366]">
+      {/* Bank Segmented Tab Toggle (UOB TMRW / K-Plus style) */}
+      <div className="flex bg-[#E5E7EB] border-2 border-[#12161A] rounded-xl p-1 mb-4 shadow-[2px_2px_0px_#12161A]">
         <button 
           onClick={() => setExpenseTab('pending')} 
-          className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
+          className={`flex-1 py-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             expenseTab === 'pending' 
-              ? 'bg-[#3f4366] text-[#f472b6] shadow-sm' 
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-white text-[#12161A] border-2 border-[#12161A] shadow-[1px_1px_0px_#12161A]' 
+              : 'text-slate-600 hover:text-[#12161A]'
           }`}
         >
+          <Clock size={13} className="text-[#D97706]" />
           รอชำระ (To Pay)
         </button>
         <button 
           onClick={() => setExpenseTab('paid')} 
-          className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
+          className={`flex-1 py-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             expenseTab === 'paid' 
-              ? 'bg-[#3f4366] text-[#34d399] shadow-sm' 
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-white text-[#12161A] border-2 border-[#12161A] shadow-[1px_1px_0px_#12161A]' 
+              : 'text-slate-600 hover:text-[#12161A]'
           }`}
         >
-          ชำระแล้ว (History)
+          <CheckCircle2 size={13} className="text-[#059669]" />
+          ชำระแล้ว (Paid History)
         </button>
       </div>
 
-      {/* Bulk Payment Bar */}
+      {/* High-Contrast Bulk Payment Bar (K-Plus / SCB floating action bar) */}
       {selectedCount > 0 && expenseTab === 'pending' && (
-        <div className="sticky top-16 z-20 bg-[#25283d]/90 backdrop-blur-md p-4 rounded-xl border border-[#f472b6] shadow-[0_0_25px_rgba(244,114,182,0.2)] flex justify-between items-center mb-4 animate-fadeIn">
+        <div className="sticky top-16 z-20 bg-[#FEF3C7] border-2 border-[#12161A] shadow-[4px_4px_0px_#12161A] p-3.5 rounded-2xl flex justify-between items-center mb-4 animate-bounce-short">
           <div>
-            <span className="text-[#f472b6] text-xs font-bold">
-              เลือกชำระ {selectedCount} รายการ
-            </span>
-            <p className="text-slate-100 text-xl font-black">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-[#D97706] border border-[#12161A]" />
+              <span className="text-[#92400E] text-[11px] font-black uppercase">
+                เลือกชำระ {selectedCount} บิล
+              </span>
+            </div>
+            <p className="text-[#12161A] text-xl font-mono font-black mt-0.5">
               {formatCurrency(selectedTotal)}
             </p>
           </div>
-          <button onClick={onBulkPay} className={`${theme.button} px-5 py-2`}>
-            ยืนยันชำระ
+          <button 
+            onClick={onBulkPay} 
+            className="bg-[#059669] hover:bg-[#047857] text-white border-2 border-[#12161A] shadow-[2px_2px_0px_#12161A] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer"
+          >
+            ยืนยันชำระพร้อมกัน
           </button>
         </div>
       )}
 
       {/* Expense Cards */}
       {visibleExpenses.length === 0 ? (
-        <div className="text-center text-slate-500 py-12">
-          <Inbox size={44} className="mx-auto mb-3 opacity-40" />
-          <p className="text-sm">
-            {expenseTab === 'pending' ? 'ไม่มีบิลที่ต้องชำระในรอบนี้' : 'ยังไม่มีประวัติบิลที่ชำระแล้ว'}
+        <div className="bg-white border-2 border-[#12161A] shadow-[3px_3px_0px_#12161A] rounded-2xl text-center text-slate-500 py-12 px-4">
+          <div className="w-12 h-12 bg-slate-100 rounded-full border-2 border-[#12161A] flex items-center justify-center mx-auto mb-3">
+            <Inbox size={24} className="text-slate-400" />
+          </div>
+          <p className="text-sm font-bold text-[#12161A]">
+            {expenseTab === 'pending' ? 'ไม่มีบิลที่ค้างชำระในรอบนี้' : 'ยังไม่มีประวัติบิลที่ชำระแล้ว'}
+          </p>
+          <p className="text-xs text-slate-400 mt-1">
+            {expenseTab === 'pending' ? 'เยี่ยมมาก! ค่าใช้จ่ายทั้งหมดได้รับการเคลียร์แล้ว' : 'เมื่อมีการชำระเงิน ประวัติบิลจะแสดงที่นี่'}
           </p>
         </div>
       ) : (
@@ -133,3 +154,4 @@ export default function ExpenseList({
     </div>
   );
 }
+

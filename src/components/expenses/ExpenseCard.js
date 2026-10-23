@@ -1,6 +1,5 @@
 import React from 'react';
-import { Edit, Trash2 } from 'lucide-react';
-import { theme } from '../../constants/theme';
+import { Edit2, Trash2, CheckCircle2, Clock } from 'lucide-react';
 import { formatCurrency } from '../../utils/currency';
 import { getIconForCategory } from '../../utils/icons';
 
@@ -45,16 +44,16 @@ export default function ExpenseCard({
 
   return (
     <div 
-      className={`${theme.card} p-4 flex justify-between items-center transition-all ${
+      className={`rounded-2xl p-3.5 sm:p-4 flex justify-between items-center transition-all ${
         isPaid 
-          ? 'opacity-70 bg-[#1a1c29]/50' 
+          ? 'bg-[#FAFBF9] border-2 border-slate-300 shadow-[1.5px_1.5px_0px_#94A3B8] opacity-75' 
           : isSelected 
-            ? 'ring-2 ring-[#f472b6] bg-[#f472b6]/10 shadow-[0_0_15px_rgba(244,114,182,0.15)]' 
-            : 'hover:border-[#f472b6]/50'
+            ? 'bg-[#EEF2FF] border-2 border-[#2554FF] shadow-[4px_4px_0px_#2554FF]' 
+            : 'bg-white border-2 border-[#12161A] shadow-[3px_3px_0px_#12161A] hover:shadow-[4.5px_4.5px_0px_#12161A] hover:-translate-y-0.5'
       }`}
     >
       <div 
-        className="flex items-center w-2/3 cursor-pointer" 
+        className="flex items-center w-2/3 cursor-pointer select-none" 
         onClick={() => { if (st !== 'paid') onTogglePay(expense); }}
       >
         {st !== 'paid' && (
@@ -62,70 +61,75 @@ export default function ExpenseCard({
             type="checkbox" 
             checked={isSelected} 
             readOnly 
-            className="w-5 h-5 mr-3 accent-[#f472b6] rounded bg-[#161824] border-[#3f4366] cursor-pointer pointer-events-none" 
+            className="w-5 h-5 mr-2.5 accent-[#2554FF] rounded border-2 border-[#12161A] cursor-pointer pointer-events-none" 
           />
         )}
-        <div className={`p-2 rounded-xl mr-3 shadow-inner ${isPaid ? 'bg-[#25283d]' : 'bg-[#1a1c29] border border-[#3f4366]'}`}>
+        
+        {/* Category Icon Square */}
+        <div className={`w-10 h-10 rounded-xl mr-3 border-2 border-[#12161A] flex items-center justify-center shrink-0 shadow-[1.5px_1.5px_0px_#12161A] ${
+          isPaid ? 'bg-slate-200 text-slate-600' : 'bg-[#F5F6F0] text-[#12161A]'
+        }`}>
           {getIconForCategory(cat?.name)}
         </div>
+
         <div className="truncate">
-          <h3 className={`font-bold text-sm truncate text-slate-200 ${isPaid ? 'line-through text-slate-500' : ''}`}>
-            {expense.title} 
+          <h3 className={`font-black text-sm truncate flex items-center flex-wrap gap-1 ${
+            isPaid ? 'line-through text-slate-400' : 'text-[#12161A]'
+          }`}>
+            <span>{expense.title}</span>
             {expense.paymentType === 'installment' && (
-              <span className="text-[10px] bg-pink-900/30 text-[#f472b6] border border-[#f472b6]/30 px-2 rounded-full ml-1 font-mono">
-                {expense.currentInstallment}/{expense.installmentMonths}
+              <span className="text-[10px] bg-[#EEF2FF] text-[#2554FF] border border-[#12161A] px-1.5 py-0.2 rounded font-mono font-bold">
+                งวด {expense.currentInstallment}/{expense.installmentMonths}
               </span>
             )}
             {filters.month && expense.month < filters.month && !isPaid && (
-              <span className="ml-2 text-[10px] bg-rose-900/40 text-rose-400 px-1.5 py-0.5 rounded border border-rose-700/50">
-                ค้างชำระจาก {expense.month}
+              <span className="text-[9px] bg-[#FEE2E2] text-[#991B1B] px-1.5 py-0.2 rounded border border-[#DC2626] font-bold">
+                ค้างจาก {expense.month}
               </span>
             )}
             {filters.month && expense.month < filters.month && isPaid && (
-              <span className="ml-2 text-[10px] bg-emerald-900/40 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-700/50">
-                ชำระแล้ว (จาก {expense.month})
-              </span>
-            )}
-            {filters.month && expense.month === filters.month && pMonth && pMonth > filters.month && (
-              <span className="ml-2 text-[10px] bg-amber-900/40 text-amber-400 px-1.5 py-0.5 rounded border border-amber-700/50">
-                ชำระล่าช้า ({pMonth})
+              <span className="text-[9px] bg-[#D1FAE5] text-[#065F46] px-1.5 py-0.2 rounded border border-[#059669] font-bold">
+                เคลียร์แล้ว ({expense.month})
               </span>
             )}
           </h3>
-          <p className="text-xs text-slate-500 truncate mt-0.5">
-            {cat?.name} • {payerText}
+          <p className="text-[11px] text-slate-500 font-semibold truncate mt-0.5">
+            {cat?.name || 'ทั่วไป'} • <span className="text-slate-700 font-bold">{payerText || 'ไม่ระบุ'}</span>
           </p>
         </div>
       </div>
 
-      <div className="flex flex-col items-end text-right">
-        <span className={`font-black ${isPaid ? 'text-slate-500' : 'text-[#67e8f9] drop-shadow-[0_0_5px_rgba(103,232,249,0.3)]'}`}>
+      <div className="flex flex-col items-end text-right shrink-0 ml-2">
+        <span className={`font-mono font-black text-base ${
+          isPaid ? 'text-slate-400 line-through' : 'text-[#12161A]'
+        }`}>
           {formatCurrency(amt)}
         </span>
-        <div className="flex items-center gap-2 mt-1">
+
+        <div className="flex items-center gap-1.5 mt-1">
           {isPaid ? (
-            <span className="text-[10px] text-emerald-400 font-bold bg-emerald-900/30 px-2 py-0.5 rounded border border-emerald-900/50">
-              ชำระแล้ว
+            <span className="text-[10px] text-[#065F46] font-bold bg-[#D1FAE5] px-2 py-0.5 rounded-md border border-[#059669] flex items-center gap-0.5">
+              <CheckCircle2 size={10} /> จ่ายแล้ว
             </span>
           ) : (
-            <span className="text-[10px] text-[#f472b6] font-bold bg-pink-900/30 px-2 py-0.5 rounded border border-pink-900/50">
-              รอชำระ
+            <span className="text-[10px] text-[#92400E] font-bold bg-[#FEF3C7] px-2 py-0.5 rounded-md border border-[#D97706] flex items-center gap-0.5">
+              <Clock size={10} /> รอชำระ
             </span>
           )}
 
           {isPaid && (
             <button 
               onClick={(ev) => { ev.stopPropagation(); onUndoPay(expense); }} 
-              className="text-[10px] text-rose-400 font-bold bg-rose-900/30 px-2 py-0.5 rounded border border-rose-900/50 hover:bg-rose-900/50 transition-colors mr-1"
+              className="text-[10px] text-[#E11D48] font-bold bg-[#FFE4E6] hover:bg-[#FECDD3] px-2 py-0.5 rounded-md border border-[#12161A] transition cursor-pointer"
             >
-              ยกเลิกชำระ
+              ยกเลิก
             </button>
           )}
 
           {st !== 'paid' && expense.paymentType !== 'installment' && (
             <button 
               onClick={(ev) => { ev.stopPropagation(); onPartialPay(expense); }} 
-              className="text-[10px] text-amber-400 font-bold bg-amber-900/30 px-2 py-0.5 rounded border border-amber-900/50 hover:bg-amber-900/50 transition-colors mr-1"
+              className="text-[10px] text-[#92400E] font-bold bg-[#FEF3C7] hover:bg-[#FDE68A] px-2 py-0.5 rounded-md border border-[#12161A] transition cursor-pointer"
             >
               แบ่งจ่าย
             </button>
@@ -133,21 +137,22 @@ export default function ExpenseCard({
 
           <button 
             onClick={(ev) => { ev.stopPropagation(); onEdit(expense); }} 
-            className="text-slate-400 hover:text-[#38bdf8] transition-colors"
+            className="w-6 h-6 rounded-md bg-white hover:bg-slate-100 border border-[#12161A] flex items-center justify-center text-slate-700 transition cursor-pointer"
             title="แก้ไขบิล"
           >
-            <Edit size={14} />
+            <Edit2 size={12} />
           </button>
           
           <button 
             onClick={(ev) => { ev.stopPropagation(); onDelete(expense); }} 
-            className="text-slate-400 hover:text-rose-400 transition-colors"
-            title="ลบบิลออกจากฐานข้อมูล"
+            className="w-6 h-6 rounded-md bg-white hover:bg-rose-50 border border-[#12161A] flex items-center justify-center text-[#E11D48] transition cursor-pointer"
+            title="ลบบิล"
           >
-            <Trash2 size={14} />
+            <Trash2 size={12} />
           </button>
         </div>
       </div>
     </div>
   );
 }
+

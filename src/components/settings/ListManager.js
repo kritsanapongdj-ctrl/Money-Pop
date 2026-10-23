@@ -21,18 +21,24 @@ export default function ListManager({ title, data, updateDB, dataKey, icon: Icon
   };
 
   return (
-    <div className={`${theme.card} p-5`}>
-      <h3 className={`font-bold ${theme.primary} mb-4 flex items-center`}>
-        {Icon && <Icon size={18} className="mr-2" />}
-        {title}
-      </h3>
+    <div className="bg-white border-2 border-[#12161A] shadow-[3px_3px_0px_#12161A] rounded-2xl p-4">
+      <div className="flex items-center gap-2 mb-3 pb-2 border-b-2 border-slate-100">
+        {Icon && (
+          <div className="w-6 h-6 rounded-md bg-[#2554FF]/10 text-[#2554FF] border border-[#12161A] flex items-center justify-center">
+            <Icon size={14} />
+          </div>
+        )}
+        <h3 className="text-xs font-black uppercase tracking-wider text-[#12161A]">
+          {title} ({data.length})
+        </h3>
+      </div>
       
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-3">
         <input 
           type="text" 
           value={name} 
           onChange={(e) => setName(e.target.value)} 
-          className={theme.input} 
+          className={`${theme.input} text-xs py-2`} 
           placeholder={`ชื่อ${title}...`} 
         />
         {hasEmail && (
@@ -40,31 +46,34 @@ export default function ListManager({ title, data, updateDB, dataKey, icon: Icon
             type="email" 
             value={email} 
             onChange={(e) => setEmail(e.target.value)} 
-            className={theme.input} 
+            className={`${theme.input} text-xs py-2`} 
             placeholder="อีเมล..." 
           />
         )}
-        <button onClick={handleAdd} className={`${theme.button} px-4 rounded-xl`}>
-          <Plus size={20} />
+        <button 
+          onClick={handleAdd} 
+          className="bg-[#2554FF] hover:bg-[#1B40DF] text-white border-2 border-[#12161A] shadow-[2px_2px_0px_#12161A] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none px-3 rounded-xl transition cursor-pointer flex items-center justify-center shrink-0"
+        >
+          <Plus size={18} className="stroke-[3]" />
         </button>
       </div>
 
-      <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+      <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-1">
         {data.map((item) => (
           <div 
             key={item.id} 
-            className="flex justify-between items-center bg-[#161824] p-3 rounded-xl border border-[#3f4366]"
+            className="flex justify-between items-center bg-[#F5F6F0] p-2.5 rounded-xl border border-[#12161A]"
           >
             <div>
-              <span className="font-bold text-sm text-slate-200">{item.name}</span>
-              {item.email && <span className="block text-xs text-slate-500">{item.email}</span>}
+              <span className="font-bold text-xs text-[#12161A]">{item.name}</span>
+              {item.email && <span className="block text-[10px] text-slate-500 font-medium">{item.email}</span>}
             </div>
             <button 
               onClick={() => handleDelete(item.id)} 
-              className="text-slate-500 hover:text-[#f472b6] transition-colors"
-              title="ลบ"
+              className="w-6 h-6 rounded-md bg-white hover:bg-rose-50 border border-[#12161A] flex items-center justify-center text-[#E11D48] transition cursor-pointer"
+              title="ลบรายการ"
             >
-              <Trash2 size={18} />
+              <Trash2 size={12} />
             </button>
           </div>
         ))}
@@ -72,3 +81,4 @@ export default function ListManager({ title, data, updateDB, dataKey, icon: Icon
     </div>
   );
 }
+

@@ -4,30 +4,53 @@
     <meta charset="utf-8" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#1e40af" />
+    <meta name="theme-color" content="#F5F6F0" />
     <meta
       name="description"
-      content="Money-Pop Family Expenses App"
+      content="Money-Pop - Family & Personal Expense Tracker (Neo-Brutalism Fintech Interface)"
     />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <title>Money-Pop</title>
-    <!-- เพิ่ม Tailwind CSS ผ่าน CDN สำหรับโปรเจกต์ที่ยังไม่ได้ตั้งค่า Tailwind เต็มรูปแบบ -->
+    <title>Money-Pop | Family Expense Vault</title>
+    
+    <!-- Google Fonts: Plus Jakarta Sans & IBM Plex Sans Thai -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
         theme: {
           extend: {
+            fontFamily: {
+              sans: ['"Plus Jakarta Sans"', '"IBM Plex Sans Thai"', 'sans-serif'],
+              mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+            },
             colors: {
-              slate: { 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 400: '#94a3b8', 500: '#64748b', 600: '#475569', 700: '#334155', 800: '#1e293b', 900: '#0f172a' },
-              blue: { 50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a' },
+              ink: '#12161A',
+              paper: '#F5F6F0',
+              paperDim: '#EAECE1',
+              paperCard: '#FFFFFF',
+              vaultBlue: '#2554FF',
+              vaultEmerald: '#059669',
+              vaultAmber: '#D97706',
+              vaultCoral: '#E11D48',
+              vaultPurple: '#7C3AED',
+            },
+            boxShadow: {
+              'brutal-sm': '2px 2px 0px #12161A',
+              'brutal': '3px 3px 0px #12161A',
+              'brutal-lg': '5px 5px 0px #12161A',
+              'brutal-xl': '8px 8px 0px #12161A',
             }
           }
         }
       }
     </script>
   </head>
-  <body>
+  <body class="bg-[#F5F6F0] text-[#12161A] antialiased selection:bg-[#2554FF] selection:text-white">
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
   </body>

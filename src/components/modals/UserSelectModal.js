@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users } from 'lucide-react';
+import { Users, Check } from 'lucide-react';
 
 export default function UserSelectModal({ 
   show, 
@@ -11,34 +11,41 @@ export default function UserSelectModal({
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4 animate-fadeIn">
-      <div className="bg-[#161C2D] border border-[#f472b6]/60 w-full max-w-sm rounded-3xl p-8 shadow-[0_0_50px_rgba(244,114,182,0.3)] text-center relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-[#38bdf8]/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-32 h-32 bg-[#f472b6]/10 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none" />
-
-        <div className="mx-auto w-16 h-16 bg-[#f472b6]/20 rounded-full flex items-center justify-center mb-4 shadow-[0_0_20px_rgba(244,114,182,0.4)] border border-[#f472b6]/50 relative z-10">
-          <Users size={32} className="text-[#f472b6]" />
+    <div className="fixed inset-0 bg-[#12161A]/70 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fadeIn">
+      <div className="bg-white border-2 border-[#12161A] shadow-[8px_8px_0px_#12161A] w-full max-w-sm rounded-2xl p-6 text-center">
+        
+        <div className="mx-auto w-14 h-14 bg-[#2554FF] text-white border-2 border-[#12161A] shadow-[3px_3px_0px_#12161A] rounded-2xl flex items-center justify-center mb-3">
+          <Users size={28} />
         </div>
         
-        <h2 className="text-2xl font-black text-slate-100 mb-2 relative z-10">ยินดีต้อนรับ!</h2>
-        <p className="text-slate-400 mb-6 text-sm relative z-10">
-          กรุณาระบุว่าคุณคือใคร เพื่อใช้บันทึกประวัติการทำรายการ
+        <span className="text-[10px] font-black tracking-widest text-[#2554FF] uppercase bg-[#EEF2FF] border border-[#2554FF]/40 px-2 py-0.5 rounded-full">
+          USER PROFILE
+        </span>
+        <h2 className="text-xl font-black text-[#12161A] tracking-tight mt-1 mb-1">
+          เลือกผู้ใช้งานปัจจุบัน
+        </h2>
+        <p className="text-slate-500 mb-5 text-xs font-semibold">
+          ระบุตัวตนของคุณเพื่อบันทึกประวัติการจ่ายและออกสลิป
         </p>
 
-        <div className="space-y-3 relative z-10">
+        <div className="space-y-2.5">
           {members.map((m) => {
             const isSelected = currentUser === String(m.id);
             return (
               <button 
                 key={m.id} 
                 onClick={() => onSelectUser(m.id)} 
-                className={`w-full py-4 rounded-xl font-bold transition-all text-lg flex items-center justify-center ${
+                className={`w-full py-3 px-4 rounded-xl font-black transition-all text-sm flex items-center justify-between border-2 border-[#12161A] cursor-pointer ${
                   isSelected 
-                    ? 'bg-[#f472b6] text-white shadow-[0_0_15px_rgba(244,114,182,0.5)]' 
-                    : 'bg-[#161824] text-slate-300 border border-[#3f4366] hover:border-[#f472b6] hover:text-[#f472b6]'
+                    ? 'bg-[#2554FF] text-white shadow-[3px_3px_0px_#12161A] translate-x-[-1px] translate-y-[-1px]' 
+                    : 'bg-white hover:bg-slate-50 text-[#12161A] shadow-[2px_2px_0px_#12161A]'
                 }`}
               >
-                {m.name}
+                <div className="flex items-center gap-2">
+                  <div className={`w-3 h-3 rounded-full border border-[#12161A] ${isSelected ? 'bg-[#10B981]' : 'bg-slate-300'}`} />
+                  <span>{m.name}</span>
+                </div>
+                {isSelected && <Check size={18} className="stroke-[3]" />}
               </button>
             );
           })}
@@ -47,7 +54,7 @@ export default function UserSelectModal({
         {currentUser && (
           <button 
             onClick={onClose} 
-            className="mt-6 text-slate-500 hover:text-slate-300 underline text-sm relative z-10"
+            className="mt-5 text-slate-500 hover:text-[#12161A] font-bold text-xs underline cursor-pointer"
           >
             ปิดหน้าต่าง
           </button>
@@ -56,3 +63,4 @@ export default function UserSelectModal({
     </div>
   );
 }
+

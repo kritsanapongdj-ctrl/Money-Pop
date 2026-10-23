@@ -1,12 +1,15 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, 
   Tooltip as RechartsTooltip, Cell, PieChart, Pie, Legend 
 } from 'recharts';
+import { Eye, EyeOff, CheckCircle2, Clock3, TrendingUp, PieChart as PieIcon, BarChart3 } from 'lucide-react';
 import { theme } from '../../constants/theme';
 import { formatCurrency } from '../../utils/currency';
 
 export default function Dashboard({ filteredExps, categories, members, filters }) {
+  const [hideAmount, setHideAmount] = useState(false);
+
   const { totalPaid, totalPending, categoryData, memberData } = useMemo(() => {
     let tPaid = 0;
     let tPend = 0;
@@ -69,77 +72,190 @@ export default function Dashboard({ filteredExps, categories, members, filters }
     };
   }, [filteredExps, categories, members, filters]);
 
+  const totalAll = totalPaid + totalPending;
+  const paidPercent = totalAll > 0 ? Math.round((totalPaid / totalAll) * 100) : 0;
+
   return (
     <div className="px-4 sm:px-0 space-y-4">
-      {/* Summary Hero Card */}
-      <div className={`${theme.card} p-5 bg-gradient-to-br from-[#2e1065] via-[#1e1b4b] to-[#4c1d95] text-white border-[#8b5cf6]/30 relative overflow-hidden`}>
-        <div className="absolute top-0 right-0 w-32 h-32 bg-[#fbbf24]/20 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-32 h-32 bg-[#f472b6]/20 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none" />
-        <p className="text-[#a78bfa] text-sm mb-1 font-medium z-10 relative">ยอดใช้จ่ายรวมเดือนนี้</p>
-        <h2 className="text-4xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-[#f472b6] to-[#fbbf24] drop-shadow-[0_2px_10px_rgba(244,114,182,0.3)] z-10 relative">
-          {formatCurrency(totalPaid + totalPending)}
-        </h2>
-        <div className="grid grid-cols-2 gap-3 z-10 relative">
-          <div className="bg-[#1a1c29]/60 backdrop-blur-md p-3 rounded-xl border-l-4 border-[#34d399] shadow-inner">
-            <p className="text-xs font-bold text-slate-400">ชำระแล้ว</p>
-            <p className="text-lg font-black text-[#34d399]">{formatCurrency(totalPaid)}</p>
+      {/* K-Plus & UOB TMRW Inspired Hero Tile */}
+      <div className="bg-white border-2 border-[#12161A] shadow-[4px_4px_0px_#12161A] rounded-2xl p-5 relative overflow-hidden">
+        {/* Top bar with Eyeball Toggle (K-Plus style) */}
+        <div className="flex justify-between items-center mb-2">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#2554FF] border border-[#12161A]" />
+            <span className="text-[11px] font-black tracking-wider text-slate-600 uppercase">
+              ยอดรวมค่าใช้จ่ายประจำเดือน
+            </span>
           </div>
-          <div className="bg-[#1a1c29]/60 backdrop-blur-md p-3 rounded-xl border-l-4 border-[#f472b6] shadow-inner">
-            <p className="text-xs font-bold text-slate-400">รอชำระ</p>
-            <p className="text-lg font-black text-[#f472b6]">{formatCurrency(totalPending)}</p>
+          <button 
+            onClick={() => setHideAmount(!hideAmount)}
+            className="flex items-center gap-1 text-xs text-slate-500 hover:text-[#12161A] font-semibold bg-slate-100 hover:bg-slate-200 border border-[#12161A] rounded-lg px-2 py-0.5 transition cursor-pointer"
+            title={hideAmount ? "แสดงยอดเงิน" : "ซ่อนยอดเงิน"}
+          >
+            {hideAmount ? <EyeOff size={13} /> : <Eye size={13} />}
+            <span className="text-[10px]">{hideAmount ? "ซ่อนอยู่" : "ซ่อนยอด"}</span>
+          </button>
+        </div>
+
+        {/* Big Balance Number */}
+        <div className="mb-4">
+          <h2 className="text-3xl sm:text-4xl font-mono font-black text-[#12161A] tracking-tight">
+            {hideAmount ? '฿ ••••••' : formatCurrency(totalAll)}
+          </h2>
+        </div>
+
+        {/* UOB TMRW Style Progress Track */}
+        <div className="mb-4 bg-[#F5F6F0] border-2 border-[#12161A] rounded-xl p-3">
+          <div className="flex justify-between items-center text-xs font-bold mb-1.5">
+            <span className="flex items-center gap-1 text-[#12161A]">
+              <TrendingUp size={13} className="text-[#2554FF]" />
+              ความคืบหน้าการชำระบิล
+            </span>
+            <span className="font-mono text-[#059669] font-black">
+              {paidPercent}% ชำระแล้ว
+            </span>
+          </div>
+          <div className="w-full bg-slate-200 h-3 rounded-full border border-[#12161A] overflow-hidden p-[1px]">
+            <div 
+              className="bg-[#059669] h-full rounded-full transition-all duration-500"
+              style={{ width: `${paidPercent}%` }}
+            />
+          </div>
+        </div>
+
+        {/* SCB EASY Segmented Balance Tiles */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-[#ECFDF5] border-2 border-[#12161A] shadow-[2px_2px_0px_#12161A] p-3 rounded-xl">
+            <div className="flex items-center gap-1.5 mb-1">
+              <CheckCircle2 size={14} className="text-[#059669]" />
+              <span className="text-[11px] font-bold text-[#065F46]">ชำระแล้ว</span>
+            </div>
+            <p className="text-base sm:text-lg font-mono font-black text-[#059669] truncate">
+              {hideAmount ? '••••' : formatCurrency(totalPaid)}
+            </p>
+          </div>
+
+          <div className="bg-[#FFFBEB] border-2 border-[#12161A] shadow-[2px_2px_0px_#12161A] p-3 rounded-xl">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Clock3 size={14} className="text-[#D97706]" />
+              <span className="text-[11px] font-bold text-[#92400E]">รอชำระ</span>
+            </div>
+            <p className="text-base sm:text-lg font-mono font-black text-[#D97706] truncate">
+              {hideAmount ? '••••' : formatCurrency(totalPending)}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Breakdown Charts */}
+      {/* Breakdown Charts Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className={`${theme.card} p-4 h-64`}>
-          <h3 className="text-sm font-bold text-[#f472b6] mb-2">แยกตามหมวดหมู่</h3>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={categoryData} layout="vertical" margin={{ left: 10 }}>
-              <XAxis type="number" hide />
-              <YAxis dataKey="n" type="category" width={70} tick={{ fontSize: 11, fill: '#94a3b8' }} />
-              <RechartsTooltip 
-                cursor={{ fill: 'rgba(255,255,255,0.05)' }} 
-                contentStyle={{ backgroundColor: '#1a1c29', border: '1px solid #3f4366', borderRadius: '12px', color: '#f1f5f9' }} 
-                formatter={(v) => formatCurrency(v)} 
-              />
-              <Bar dataKey="v" radius={[0, 4, 4, 0]} barSize={20}>
-                {categoryData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={theme.chartColors[index % theme.chartColors.length]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+        {/* Category Breakdown Bar Chart */}
+        <div className="bg-white border-2 border-[#12161A] shadow-[3px_3px_0px_#12161A] rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-200">
+            <div className="w-6 h-6 rounded-lg bg-[#2554FF]/10 text-[#2554FF] border border-[#12161A] flex items-center justify-center">
+              <BarChart3 size={14} />
+            </div>
+            <h3 className="text-xs font-black uppercase tracking-wider text-[#12161A]">
+              แยกตามหมวดหมู่ค่าใช้จ่าย
+            </h3>
+          </div>
+          
+          <div className="h-60">
+            {categoryData.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-xs text-slate-400 font-semibold">
+                ไม่มีรายการในเดือนนี้
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={categoryData} layout="vertical" margin={{ left: 10, right: 10 }}>
+                  <XAxis type="number" hide />
+                  <YAxis dataKey="n" type="category" width={80} tick={{ fontSize: 11, fill: '#12161A', fontWeight: 600 }} />
+                  <RechartsTooltip 
+                    cursor={{ fill: 'rgba(37, 84, 255, 0.06)' }} 
+                    contentStyle={{ 
+                      backgroundColor: '#FFFFFF', 
+                      border: '2px solid #12161A', 
+                      borderRadius: '10px', 
+                      boxShadow: '3px 3px 0px #12161A',
+                      color: '#12161A',
+                      fontWeight: 'bold',
+                      fontSize: '12px'
+                    }} 
+                    formatter={(v) => formatCurrency(v)} 
+                  />
+                  <Bar dataKey="v" radius={[0, 6, 6, 0]} barSize={18}>
+                    {categoryData.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={theme.chartColors[index % theme.chartColors.length]} 
+                        stroke="#12161A" 
+                        strokeWidth={1.5}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
         </div>
 
+        {/* Member Breakdown Pie Chart */}
         {!filters.payer && (
-          <div className={`${theme.card} p-4 h-64`}>
-            <h3 className="text-sm font-bold text-[#f472b6] mb-2">แยกรายบุคคล</h3>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie 
-                  data={memberData} 
-                  dataKey="v" 
-                  nameKey="n" 
-                  innerRadius={40} 
-                  outerRadius={70} 
-                  stroke="none"
-                >
-                  {memberData.map((_, i) => (
-                    <Cell key={i} fill={theme.chartColors[i % theme.chartColors.length]} />
-                  ))}
-                </Pie>
-                <RechartsTooltip 
-                  contentStyle={{ backgroundColor: '#1a1c29', border: '1px solid #3f4366', borderRadius: '12px', color: '#f1f5f9' }} 
-                  formatter={(v) => formatCurrency(v)} 
-                />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', color: '#cbd5e1' }} />
-              </PieChart>
-            </ResponsiveContainer>
+          <div className="bg-white border-2 border-[#12161A] shadow-[3px_3px_0px_#12161A] rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-200">
+              <div className="w-6 h-6 rounded-lg bg-[#059669]/10 text-[#059669] border border-[#12161A] flex items-center justify-center">
+                <PieIcon size={14} />
+              </div>
+              <h3 className="text-xs font-black uppercase tracking-wider text-[#12161A]">
+                สัดส่วนยอดใช้จ่ายรายบุคคล
+              </h3>
+            </div>
+
+            <div className="h-60">
+              {memberData.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-xs text-slate-400 font-semibold">
+                  ไม่มีรายการในเดือนนี้
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie 
+                      data={memberData} 
+                      dataKey="v" 
+                      nameKey="n" 
+                      innerRadius={45} 
+                      outerRadius={75} 
+                      stroke="#12161A"
+                      strokeWidth={2}
+                    >
+                      {memberData.map((_, i) => (
+                        <Cell key={i} fill={theme.chartColors[i % theme.chartColors.length]} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip 
+                      contentStyle={{ 
+                        backgroundColor: '#FFFFFF', 
+                        border: '2px solid #12161A', 
+                        borderRadius: '10px', 
+                        boxShadow: '3px 3px 0px #12161A',
+                        color: '#12161A',
+                        fontWeight: 'bold',
+                        fontSize: '12px'
+                      }} 
+                      formatter={(v) => formatCurrency(v)} 
+                    />
+                    <Legend 
+                      iconType="circle" 
+                      wrapperStyle={{ fontSize: '11px', color: '#12161A', fontWeight: 600 }} 
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </div>
         )}
       </div>
     </div>
   );
 }
+

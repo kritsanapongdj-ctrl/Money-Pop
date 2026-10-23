@@ -1,43 +1,54 @@
 import React from 'react';
-import { Settings as SettingsIcon, Zap, Download, Upload, Users, ShoppingBag, CreditCard } from 'lucide-react';
-import { theme } from '../../constants/theme';
+import { SlidersHorizontal, ShieldCheck, Download, Upload, Users, ShoppingBag, CreditCard } from 'lucide-react';
 import ListManager from './ListManager';
 
 export default function Settings({ dbData, updateDB, onExportData, onImportData }) {
   return (
     <div className="px-4 sm:px-0 space-y-4">
-      <h2 className="text-xl font-bold text-slate-100 flex items-center mb-2">
-        <SettingsIcon size={20} className="mr-2 text-[#38bdf8]" /> ตั้งค่าแอป
-      </h2>
+      <div className="flex items-center gap-2 mb-3">
+        <div className="w-7 h-7 rounded-lg bg-[#2554FF] text-white border-2 border-[#12161A] shadow-[1.5px_1.5px_0px_#12161A] flex items-center justify-center">
+          <SlidersHorizontal size={14} />
+        </div>
+        <h2 className="text-base sm:text-lg font-black text-[#12161A] tracking-tight">
+          ตั้งค่าระบบและการจัดการข้อมูล
+        </h2>
+      </div>
 
       {/* Backup & Restore Card */}
-      <div className={`${theme.card} p-5 bg-gradient-to-r from-[#1a1c29] to-[#25283d] border-[#3f4366]`}>
-        <h3 className="font-bold text-[#38bdf8] mb-3 flex items-center drop-shadow-sm">
-          <Zap size={18} className="mr-2 text-[#f472b6]" /> ระบบจัดการข้อมูล (Backup)
-        </h3>
+      <div className="bg-white border-2 border-[#12161A] shadow-[3px_3px_0px_#12161A] rounded-2xl p-4">
+        <div className="flex items-center gap-2 mb-3 pb-2 border-b-2 border-slate-100">
+          <div className="w-6 h-6 rounded-md bg-[#059669]/10 text-[#059669] border border-[#12161A] flex items-center justify-center">
+            <ShieldCheck size={14} />
+          </div>
+          <h3 className="text-xs font-black uppercase tracking-wider text-[#12161A]">
+            ระบบสำรองข้อมูล (Data Vault Backup)
+          </h3>
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <button 
             onClick={onExportData} 
-            className="flex flex-col items-center justify-center bg-[#161824] p-3 rounded-xl border border-[#3f4366] text-[#38bdf8] hover:bg-[#25283d] transition shadow-sm hover:border-[#38bdf8]/50 hover:shadow-[0_0_10px_rgba(56,189,248,0.2)]"
+            className="flex flex-col items-center justify-center bg-white hover:bg-slate-50 p-3 rounded-xl border-2 border-[#12161A] text-[#12161A] shadow-[2.5px_2.5px_0px_#12161A] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition cursor-pointer"
           >
-            <Download size={24} className="mb-1" />
-            <span className="text-sm font-bold">ดาวน์โหลด Backup</span>
+            <Download size={20} className="mb-1 text-[#2554FF]" />
+            <span className="text-xs font-black">ดาวน์โหลด Backup</span>
           </button>
           
-          <label className="flex flex-col items-center justify-center bg-[#161824] p-3 rounded-xl border border-[#3f4366] text-[#34d399] hover:bg-[#25283d] transition shadow-sm cursor-pointer hover:border-[#34d399]/50 hover:shadow-[0_0_10px_rgba(52,211,153,0.2)]">
-            <Upload size={24} className="mb-1" />
-            <span className="text-sm font-bold">นำเข้าข้อมูล</span>
+          <label className="flex flex-col items-center justify-center bg-white hover:bg-slate-50 p-3 rounded-xl border-2 border-[#12161A] text-[#12161A] shadow-[2.5px_2.5px_0px_#12161A] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition cursor-pointer">
+            <Upload size={20} className="mb-1 text-[#059669]" />
+            <span className="text-xs font-black">นำเข้าไฟล์ข้อมูล</span>
             <input type="file" accept=".json" onChange={onImportData} className="hidden" />
           </label>
         </div>
-        <p className="text-[10px] text-slate-500 mt-3 text-center leading-tight">
-          แนะนำให้ดาวน์โหลด Backup เก็บไว้สม่ำเสมอ<br />เพื่อป้องกันข้อมูลสูญหายกรณีระบบคลาวด์ขัดข้อง
+        
+        <p className="text-[10px] text-slate-500 font-semibold mt-3 text-center leading-normal">
+          แนะนำให้ดาวน์โหลดไฟล์สำรองข้อมูล (.json) สม่ำเสมอเพื่อความปลอดภัยของข้อมูล
         </p>
       </div>
 
       {/* Members */}
       <ListManager 
-        title="สมาชิก" 
+        title="รายชื่อสมาชิก" 
         data={dbData.members} 
         updateDB={updateDB} 
         dataKey="members" 
@@ -48,14 +59,14 @@ export default function Settings({ dbData, updateDB, onExportData, onImportData 
       {/* Categories & Sources */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <ListManager 
-          title="หมวดหมู่" 
+          title="หมวดหมู่ค่าใช้จ่าย" 
           data={dbData.categories} 
           updateDB={updateDB} 
           dataKey="categories" 
           icon={ShoppingBag} 
         />
         <ListManager 
-          title="ช่องทางจ่าย" 
+          title="ช่องทางชำระเงิน" 
           data={dbData.sources} 
           updateDB={updateDB} 
           dataKey="sources" 
@@ -65,3 +76,4 @@ export default function Settings({ dbData, updateDB, onExportData, onImportData 
     </div>
   );
 }
+
