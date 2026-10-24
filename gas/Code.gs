@@ -128,14 +128,21 @@ function loadDatabase() {
 }
 
 function saveDatabase(db) {
-  SCRIPT_PROP.setProperty(DB_PROP_KEY, JSON.stringify(db));
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     if (ss) {
       let rawSheet = ss.getSheetByName('RawData');
       if (!rawSheet) rawSheet = ss.insertSheet('RawData');
       if (rawSheet) {
-        rawSheet.getRange(1, 1).setValue(JSON.stringify(db));
+        // Chunk JSON by 40,000 characters across columns to prevent Google Sheets 50k cell limit error
+        const str = JSON.stringify(db);
+        const chunkSize = 40000;
+        const chunks = [];
+        for (let i = 0; i < str.length; i += chunkSize) {
+          chunks.push(str.slice(i, i + chunkSize));
+        }
+        rawSheet.clear();
+        rawSheet.getRange(1, 1, 1, chunks.length).setValues([chunks]);
       }
     }
   } catch (err) {}
@@ -231,33 +238,16 @@ function loadFromRawDataSheet(ss) {
   if (lastCol < 1) return null;
 
   const vals = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-  let combined = {};
-
+  let fullStr = '';
   for (let c = 0; c < vals.length; c++) {
-    const val = vals[c];
-    if (typeof val === 'string') {
-      const trimmed = val.trim();
-      if (trimmed.startsWith('{')) {
-        try {
-          const obj = JSON.parse(trimmed);
-          combined = Object.assign(combined, obj);
-        } catch (e) {}
-      } else if (trimmed.startsWith('[')) {
-        try {
-          const arr = JSON.parse(trimmed);
-          if (Array.isArray(arr) && arr.length > 0) {
-            if (arr[0].title || arr[0].totalAmount || arr[0].amount) {
-              combined.expenses = arr;
-            } else if (arr[0].name) {
-              combined.members = arr;
-            }
-          }
-        } catch (e) {}
-      }
-    }
+    if (typeof vals[c] === 'string') fullStr += vals[c];
   }
-
-  return Object.keys(combined).length > 0 ? combined : null;
+  if (fullStr.trim().startsWith('{')) {
+    try {
+      return JSON.parse(fullStr);
+    } catch (e) {}
+  }
+  return null;
 }
 
 /**
