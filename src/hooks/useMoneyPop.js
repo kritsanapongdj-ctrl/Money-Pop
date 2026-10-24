@@ -48,9 +48,23 @@ export function useMoneyPop() {
       if (!silent) setIsSyncing(true);
       const res = await fetch(`${GAS_URL}?t=${Date.now()}`);
       const data = await res.json();
-      if (data && Object.keys(data).length > 0) {
+      if (data && (
+        (data.members && data.members.length > 0) || 
+        (data.expenses && data.expenses.length > 0) || 
+        (data.categories && data.categories.length > 0)
+      )) {
         setDbData((prev) => ({ ...prev, ...data }));
         localStorage.setItem("moneyPopDB", JSON.stringify(data));
+      } else {
+        const local = localStorage.getItem("moneyPopDB");
+        if (local) {
+          try {
+            const parsed = JSON.parse(local);
+            if (parsed && (parsed.members?.length > 0 || parsed.expenses?.length > 0)) {
+              setDbData(parsed);
+            }
+          } catch (err) {}
+        }
       }
     } catch (e) {
       const local = localStorage.getItem("moneyPopDB");

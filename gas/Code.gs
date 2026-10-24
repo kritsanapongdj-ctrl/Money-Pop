@@ -36,6 +36,11 @@ function doGet(e) {
     return handleMacroDroidWebhook(e.parameter);
   }
 
+  // Trigger: Debug & Auto-Restore Inspector
+  if (action === 'debugRestore') {
+    return createJsonResponse(debugRestoreData());
+  }
+
   // Default: Return Full Database JSON
   const db = loadDatabase();
   return createJsonResponse(db);
@@ -66,16 +71,75 @@ function doPost(e) {
 
 /**
  * ----------------------------------------------------------------------------
- * 3. Database Storage Helpers (ScriptProperties + Fallback Google Sheet)
+ * 3. Database Storage Helpers (Self-Healing: ScriptProperties + Google Sheet)
  * ----------------------------------------------------------------------------
  */
 function loadDatabase() {
+  // 1. Try reading from ScriptProperties (Main key)
   const jsonStr = SCRIPT_PROP.getProperty(DB_PROP_KEY);
   if (jsonStr) {
     try {
-      return JSON.parse(jsonStr);
+      const parsed = JSON.parse(jsonStr);
+      if (parsed && (
+        (Array.isArray(parsed.members) && parsed.members.length > 0) || 
+        (Array.isArray(parsed.expenses) && parsed.expenses.length > 0)
+      )) {
+        return parsed;
+      }
     } catch (e) {}
   }
+
+  // 2. Try any legacy ScriptProperties keys (e.g. moneyPopDB_Sheets, DATA, data, database, db)
+  try {
+    const allProps = SCRIPT_PROP.getProperties();
+    for (const key in allProps) {
+      if (key !== DB_PROP_KEY) {
+        try {
+          const val = JSON.parse(allProps[key]);
+          if (val && ((val.members && val.members.length > 0) || (val.expenses && val.expenses.length > 0))) {
+            Logger.log('Restored DB from legacy ScriptProperty key: ' + key);
+            saveDatabase(val);
+            return val;
+          }
+        } catch (e) {}
+      }
+    }
+  } catch (err) {}
+
+  // 3. Try Active Google Spreadsheet (Bound Container)
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (ss) {
+      // Check each sheet to see if cell A1 contains the JSON database string
+      const sheets = ss.getSheets();
+      for (let i = 0; i < sheets.length; i++) {
+        const sheet = sheets[i];
+        const valA1 = sheet.getRange(1, 1).getValue();
+        if (typeof valA1 === 'string' && valA1.trim().startsWith('{')) {
+          try {
+            const parsed = JSON.parse(valA1);
+            if (parsed && ((parsed.members && parsed.members.length > 0) || (parsed.expenses && parsed.expenses.length > 0))) {
+              Logger.log('Restored DB from Sheet "' + sheet.getName() + '" cell A1');
+              saveDatabase(parsed);
+              return parsed;
+            }
+          } catch (e) {}
+        }
+      }
+
+      // Check if tabs are structured by name (e.g. members, expenses, etc.)
+      const tabularData = extractFromSheetTabs(ss);
+      if (tabularData && (tabularData.members.length > 0 || tabularData.expenses.length > 0)) {
+        Logger.log('Restored DB from tabular sheets');
+        saveDatabase(tabularData);
+        return tabularData;
+      }
+    }
+  } catch (err) {
+    Logger.log('Spreadsheet extraction notice: ' + err);
+  }
+
+  // 4. Fallback empty schema
   return {
     members: [],
     categories: [],
@@ -86,7 +150,119 @@ function loadDatabase() {
 }
 
 function saveDatabase(db) {
+  // Save to ScriptProperties
   SCRIPT_PROP.setProperty(DB_PROP_KEY, JSON.stringify(db));
+
+  // Also mirror save to active Google Sheet (Cell A1 of 'DB' or first sheet) if bound
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (ss) {
+      let sheet = ss.getSheetByName('DB');
+      if (!sheet) {
+        sheet = ss.getSheets()[0];
+      }
+      if (sheet) {
+        sheet.getRange(1, 1).setValue(JSON.stringify(db));
+      }
+    }
+  } catch (err) {
+    // If not a bound script, ignore
+  }
+}
+
+/**
+ * Helper to parse tabular sheets if data was stored in rows/columns
+ */
+function extractFromSheetTabs(ss) {
+  const result = {
+    members: [],
+    categories: [],
+    sources: [],
+    savings: { currentAmount: 0, transactions: [] },
+    expenses: []
+  };
+
+  function getSheetRows(sheetName) {
+    const s = ss.getSheetByName(sheetName);
+    if (!s) return [];
+    const lastRow = s.getLastRow();
+    const lastCol = s.getLastColumn();
+    if (lastRow <= 1 || lastCol < 1) return [];
+    const values = s.getRange(1, 1, lastRow, lastCol).getValues();
+    const headers = values[0];
+    const rows = [];
+    for (let r = 1; r < values.length; r++) {
+      const obj = {};
+      let hasVal = false;
+      for (let c = 0; c < headers.length; c++) {
+        const h = String(headers[c]).trim();
+        if (!h) continue;
+        let v = values[r][c];
+        if (v !== '' && v !== null && v !== undefined) hasVal = true;
+        if (typeof v === 'string' && (v.startsWith('{') || v.startsWith('['))) {
+          try { v = JSON.parse(v); } catch (e) {}
+        }
+        obj[h] = v;
+      }
+      if (hasVal) rows.push(obj);
+    }
+    return rows;
+  }
+
+  result.members = getSheetRows('members').concat(getSheetRows('Members'));
+  result.categories = getSheetRows('categories').concat(getSheetRows('Categories'));
+  result.sources = getSheetRows('sources').concat(getSheetRows('Sources'));
+  result.expenses = getSheetRows('expenses').concat(getSheetRows('Expenses'));
+
+  const svSheet = ss.getSheetByName('savings') || ss.getSheetByName('Savings');
+  if (svSheet && svSheet.getLastRow() > 1) {
+    result.savings.currentAmount = parseFloat(svSheet.getRange(2, 1).getValue()) || 0;
+  }
+
+  return result;
+}
+
+/**
+ * Diagnostic & Restore helper function that the user can run directly from GAS editor!
+ * Shows exactly what was found in Spreadsheet or Properties.
+ */
+function debugRestoreData() {
+  const report = {
+    scriptPropertiesKeys: Object.keys(SCRIPT_PROP.getProperties()),
+    spreadsheetFound: false,
+    sheets: []
+  };
+
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (ss) {
+      report.spreadsheetFound = true;
+      report.spreadsheetName = ss.getName();
+      report.spreadsheetId = ss.getId();
+      report.sheets = ss.getSheets().map(function(s) {
+        return {
+          name: s.getName(),
+          lastRow: s.getLastRow(),
+          lastCol: s.getLastColumn(),
+          cellA1Preview: String(s.getRange(1, 1).getValue()).slice(0, 100)
+        };
+      });
+    }
+  } catch (e) {
+    report.spreadsheetError = e.toString();
+  }
+
+  const loaded = loadDatabase();
+  report.restoredCounts = {
+    members: loaded.members ? loaded.members.length : 0,
+    categories: loaded.categories ? loaded.categories.length : 0,
+    sources: loaded.sources ? loaded.sources.length : 0,
+    expenses: loaded.expenses ? loaded.expenses.length : 0,
+    savingsAmount: loaded.savings ? loaded.savings.currentAmount : 0
+  };
+
+  Logger.log(JSON.stringify(report, null, 2));
+  return report;
 }
 
 /**
