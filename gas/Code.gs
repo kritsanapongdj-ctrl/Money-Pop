@@ -1,15 +1,10 @@
 /**
  * ============================================================================
- * Money-Pop Vault - Google Apps Script Backend (v5.2 Multi-Member e-Statement)
+ * Money-Pop Vault - Google Apps Script Backend (v5.3 Full Sheet Restore)
  * ============================================================================
  * Project ID: 1SLbXvbq4avVLRNt71lMNePINA35BZE-43CGfeRl-oyDJW7p9quOPXly6
- * Features:
- *  1. Database Sync (doGet / doPost) for Web App (React)
- *  2. MacroDroid Webhook Handler (action=syncCredit)
- *  3. Multi-Member Email e-Statement Scanner (scanEmailStatements)
- *     - Direct emails to script owner (You)
- *     - Auto-forwarded emails from other family members (No shared email needed!)
- *  4. Duplicate Prevention via Gmail Label (MoneyPop-Processed)
+ * Spreadsheet ID: 1tfz15iDlexM-DjGSwzIPST0zPmrcH8ixyrHMpk-zuQc
+ * Spreadsheet Link: https://docs.google.com/spreadsheets/d/1tfz15iDlexM-DjGSwzIPST0zPmrcH8ixyrHMpk-zuQc/edit
  */
 
 const SCRIPT_PROP = PropertiesService.getScriptProperties();
@@ -83,7 +78,7 @@ function loadDatabase() {
     expenses: []
   };
 
-  // 1. Try reading from ScriptProperties
+  // 1. Read existing members/categories/sources from ScriptProperties
   const jsonStr = SCRIPT_PROP.getProperty(DB_PROP_KEY);
   if (jsonStr) {
     try {
@@ -94,11 +89,20 @@ function loadDatabase() {
     } catch (e) {}
   }
 
-  // 2. If spreadsheet is bound, check sheets for missing expenses or data
+  // 2. Extract 232 expenses from Google Sheets "Expenses" tab
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     if (ss) {
-      // Check RawData sheet
+      // Force load all expenses if missing or empty
+      if (!db.expenses || db.expenses.length === 0) {
+        const sheetExpenses = loadExpensesFromSheet(ss);
+        if (sheetExpenses && sheetExpenses.length > 0) {
+          db.expenses = sheetExpenses;
+          Logger.log('Loaded ' + sheetExpenses.length + ' expenses from sheet!');
+        }
+      }
+
+      // Check RawData sheet for any extra fields
       const rawData = loadFromRawDataSheet(ss);
       if (rawData) {
         if (!db.members || db.members.length === 0) db.members = rawData.members || [];
@@ -109,21 +113,12 @@ function loadDatabase() {
           db.expenses = rawData.expenses;
         }
       }
-
-      // Check Expenses sheet (232 rows) if db.expenses is still empty
-      if (!db.expenses || db.expenses.length === 0) {
-        const sheetExpenses = loadExpensesFromSheet(ss);
-        if (sheetExpenses && sheetExpenses.length > 0) {
-          Logger.log('Successfully recovered ' + sheetExpenses.length + ' expenses from Expenses sheet!');
-          db.expenses = sheetExpenses;
-        }
-      }
     }
   } catch (err) {
     Logger.log('Spreadsheet load notice: ' + err);
   }
 
-  // Cache back to ScriptProperties so subsequent reads are instant
+  // Save back to ScriptProperties
   if ((db.members && db.members.length > 0) || (db.expenses && db.expenses.length > 0)) {
     SCRIPT_PROP.setProperty(DB_PROP_KEY, JSON.stringify(db));
   }
@@ -132,17 +127,12 @@ function loadDatabase() {
 }
 
 function saveDatabase(db) {
-  // 1. Save to ScriptProperties
   SCRIPT_PROP.setProperty(DB_PROP_KEY, JSON.stringify(db));
-
-  // 2. Also save to RawData sheet (NEVER overwrite Expenses tabular sheet!)
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     if (ss) {
       let rawSheet = ss.getSheetByName('RawData');
-      if (!rawSheet) {
-        rawSheet = ss.insertSheet('RawData');
-      }
+      if (!rawSheet) rawSheet = ss.insertSheet('RawData');
       if (rawSheet) {
         rawSheet.getRange(1, 1).setValue(JSON.stringify(db));
       }
@@ -151,7 +141,7 @@ function saveDatabase(db) {
 }
 
 /**
- * Load expenses from tabular "Expenses" sheet
+ * Load all 232 rows from "Expenses" sheet
  */
 function loadExpensesFromSheet(ss) {
   const sheet = ss.getSheetByName('Expenses') || ss.getSheetByName('expenses');
@@ -162,29 +152,21 @@ function loadExpensesFromSheet(ss) {
 
   const rawValues = sheet.getRange(1, 1, lastRow, lastCol).getValues();
 
-  let headerRowIndex = 0;
-  let headers = rawValues[0].map(h => String(h).trim());
-
-  // If cell A1 starts with '{' or is blank, check row 2 or use standard schema
-  if (headers[0] && (headers[0].startsWith('{') || headers[0] === '')) {
-    if (rawValues.length > 2 && typeof rawValues[1][0] === 'string' && !rawValues[1][0].startsWith('{') && isNaN(Number(rawValues[1][0]))) {
-      headers = rawValues[1].map(h => String(h).trim());
-      headerRowIndex = 1;
-    } else {
-      headers = ['id', 'title', 'month', 'categoryId', 'sourceId', 'paymentType', 'totalAmount', 'payerType', 'payerId', 'splitDetails', 'status'];
-      headerRowIndex = 0;
-    }
-  }
+  // Columns B1..K1 are the original headers. Column A1 was set to JSON, so replace col 0 with 'id'
+  const headers = rawValues[0].map(function(h, idx) {
+    let str = String(h).trim();
+    if (idx === 0 && (str.startsWith('{') || str === '')) return 'id';
+    return str || ('col_' + idx);
+  });
 
   const expenses = [];
-  for (let r = headerRowIndex + 1; r < rawValues.length; r++) {
+  for (let r = 1; r < rawValues.length; r++) {
     const row = rawValues[r];
     if (!row || row.every(cell => cell === '' || cell === null || cell === undefined)) continue;
 
     const exp = {};
     for (let c = 0; c < headers.length && c < row.length; c++) {
       const key = headers[c];
-      if (!key) continue;
       let val = row[c];
 
       if (typeof val === 'string') {
@@ -197,35 +179,37 @@ function loadExpensesFromSheet(ss) {
       exp[key] = val;
     }
 
-    if (!exp.id && exp.title) {
-      exp.id = String(Date.now() + r);
-    }
-    if (exp.totalAmount !== undefined && exp.totalAmount !== '') {
-      exp.totalAmount = parseFloat(exp.totalAmount) || 0;
-    }
-    if (exp.month && exp.month instanceof Date) {
-      exp.month = Utilities.formatDate(exp.month, 'GMT+7', 'yyyy-MM');
-    }
-    if (exp.installmentMonths) {
-      exp.installmentMonths = parseInt(exp.installmentMonths) || 1;
-    }
-    if (exp.currentInstallment) {
-      exp.currentInstallment = parseInt(exp.currentInstallment) || 1;
-    }
-    if (exp.fullTotalAmount) {
-      exp.fullTotalAmount = parseFloat(exp.fullTotalAmount) || exp.totalAmount;
-    }
+    // Map fields
+    exp.id = String(exp.id || (Date.now() + r));
+    exp.title = String(exp.title || exp.name || exp['ชื่อรายการ'] || exp['รายการ'] || ('รายการบิล #' + r));
+    exp.totalAmount = parseFloat(exp.totalAmount || exp.amount || exp['ยอดเงิน'] || exp['จำนวนเงิน'] || 0) || 0;
 
-    if (exp.title || exp.totalAmount > 0) {
-      expenses.push(exp);
+    let m = exp.month || exp.date || exp['เดือน'] || Utilities.formatDate(new Date(), 'GMT+7', 'yyyy-MM');
+    if (m instanceof Date) {
+      m = Utilities.formatDate(m, 'GMT+7', 'yyyy-MM');
+    } else if (typeof m === 'string' && m.length > 7) {
+      m = m.slice(0, 7);
     }
+    exp.month = String(m);
+
+    exp.categoryId = String(exp.categoryId || exp.category || '');
+    exp.sourceId = String(exp.sourceId || exp.source || '');
+    exp.paymentType = exp.paymentType || 'normal';
+    exp.payerType = exp.payerType || 'single';
+    exp.status = exp.status || 'pending';
+
+    if (exp.installmentMonths) exp.installmentMonths = parseInt(exp.installmentMonths) || 1;
+    if (exp.currentInstallment) exp.currentInstallment = parseInt(exp.currentInstallment) || 1;
+    if (exp.fullTotalAmount) exp.fullTotalAmount = parseFloat(exp.fullTotalAmount) || exp.totalAmount;
+
+    expenses.push(exp);
   }
 
   return expenses;
 }
 
 /**
- * Load raw JSON database from RawData sheet (if split across columns)
+ * Load raw JSON database from RawData sheet
  */
 function loadFromRawDataSheet(ss) {
   const sheet = ss.getSheetByName('RawData') || ss.getSheetByName('rawdata');
@@ -238,11 +222,25 @@ function loadFromRawDataSheet(ss) {
 
   for (let c = 0; c < vals.length; c++) {
     const val = vals[c];
-    if (typeof val === 'string' && val.trim().startsWith('{')) {
-      try {
-        const obj = JSON.parse(val);
-        combined = Object.assign(combined, obj);
-      } catch (e) {}
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      if (trimmed.startsWith('{')) {
+        try {
+          const obj = JSON.parse(trimmed);
+          combined = Object.assign(combined, obj);
+        } catch (e) {}
+      } else if (trimmed.startsWith('[')) {
+        try {
+          const arr = JSON.parse(trimmed);
+          if (Array.isArray(arr) && arr.length > 0) {
+            if (arr[0].title || arr[0].totalAmount || arr[0].amount) {
+              combined.expenses = arr;
+            } else if (arr[0].name) {
+              combined.members = arr;
+            }
+          }
+        } catch (e) {}
+      }
     }
   }
 
@@ -250,25 +248,20 @@ function loadFromRawDataSheet(ss) {
 }
 
 /**
- * Diagnostic & Restore helper function that the user can run directly from GAS editor!
- * Shows exactly what was found in Spreadsheet or Properties.
+ * Diagnostic & Restore helper function
  */
 function debugRestoreData() {
-  // Clear empty cached expenses from ScriptProperties so it forcefully pulls from sheet
-  const curStr = SCRIPT_PROP.getProperty(DB_PROP_KEY);
-  if (curStr) {
-    try {
-      const cur = JSON.parse(curStr);
-      if (!cur.expenses || cur.expenses.length === 0) {
-        SCRIPT_PROP.deleteProperty(DB_PROP_KEY);
-      }
-    } catch (e) {}
-  }
+  // Clear cached DB in ScriptProperties to force fresh read of sheet
+  SCRIPT_PROP.deleteProperty(DB_PROP_KEY);
 
   const loaded = loadDatabase();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
   const report = {
-    scriptPropertiesKeys: Object.keys(SCRIPT_PROP.getProperties()),
-    spreadsheetFound: false,
+    spreadsheetFound: !!ss,
+    spreadsheetName: ss ? ss.getName() : '',
+    spreadsheetId: ss ? ss.getId() : '',
+    spreadsheetUrl: ss ? ss.getUrl() : '',
     restoredCounts: {
       members: loaded.members ? loaded.members.length : 0,
       categories: loaded.categories ? loaded.categories.length : 0,
@@ -276,26 +269,8 @@ function debugRestoreData() {
       expenses: loaded.expenses ? loaded.expenses.length : 0,
       savingsAmount: loaded.savings ? loaded.savings.currentAmount : 0
     },
-    sampleExpense: loaded.expenses && loaded.expenses.length > 0 ? loaded.expenses[0] : null
+    firstThreeExpenses: loaded.expenses ? loaded.expenses.slice(0, 3) : []
   };
-
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    if (ss) {
-      report.spreadsheetFound = true;
-      report.spreadsheetName = ss.getName();
-      report.spreadsheetId = ss.getId();
-      report.sheets = ss.getSheets().map(function(s) {
-        return {
-          name: s.getName(),
-          lastRow: s.getLastRow(),
-          lastCol: s.getLastColumn()
-        };
-      });
-    }
-  } catch (e) {
-    report.spreadsheetError = e.toString();
-  }
 
   Logger.log(JSON.stringify(report, null, 2));
   return report;
@@ -305,18 +280,11 @@ function debugRestoreData() {
  * ----------------------------------------------------------------------------
  * 4. Multi-Member Email e-Statement Scanner
  * ----------------------------------------------------------------------------
- * How it resolves family members without a shared bot email:
- *  - Script owner (You): Emails sent directly to your Gmail.
- *  - Other family members: Set an Auto-Forward rule in their personal Gmail:
- *    "If from: bank (e.g. @ktc.co.th, @linebk.com, @uob.co.th) -> Forward to YOUR Gmail"
- *  - This function inspects headers/body to identify which member forwarded it,
- *    unlocks the statement data, and assigns it to their Personal Credit Vault!
  */
 function scanEmailStatements() {
   const db = loadDatabase();
   const label = getOrCreateLabel(PROCESSED_LABEL);
 
-  // Search for bank statement emails not yet processed
   const query = 'has:attachment filename:pdf (from:ktc.co.th OR from:linebk OR from:uob.co.th OR from:kasikornbank.com OR from:ttbbank.com OR from:cardx.co.th OR from:scb.co.th OR subject:"ใบแจ้งยอด" OR subject:"e-Statement" OR subject:"Statement") -label:' + PROCESSED_LABEL;
   const threads = GmailApp.search(query, 0, 15);
   const results = [];
@@ -330,24 +298,17 @@ function scanEmailStatements() {
     const from = lastMsg.getFrom();
     const body = lastMsg.getPlainBody();
 
-    // 1. Identify which family member this statement belongs to
     const targetMember = identifyMember(lastMsg, body, db.members);
     if (!targetMember) {
       Logger.log('Could not identify member for thread: ' + subject);
       continue;
     }
 
-    // 2. Identify the bank / credit source (LINE BK, KTC, UOB, etc.)
     const bankInfo = identifyBank(from, subject, body);
-
-    // 3. Extract statement metrics (Due Date, Total Amount Due, Min Due)
     const metrics = extractStatementMetrics(subject, body, lastMsg);
 
     if (metrics.amount > 0) {
-      // 4. Update Personal Credit Vault in Database
       updateMemberCreditSource(db, targetMember.id, bankInfo.name, bankInfo.type, metrics);
-
-      // 5. Create or Update Pending Bill in Expenses for that month
       createExpenseBill(db, targetMember.id, bankInfo.name, metrics);
 
       results.push({
@@ -358,7 +319,6 @@ function scanEmailStatements() {
         month: metrics.month
       });
 
-      // Mark as processed
       thread.addLabel(label);
     }
   }
@@ -371,10 +331,9 @@ function scanEmailStatements() {
 }
 
 /**
- * Identify family member based on forwarding headers or body (supports multiple comma-separated emails per member)
+ * Identify family member based on forwarding headers or body
  */
 function identifyMember(msg, body, members) {
-  // Check if forwarded from any of the member's registered emails
   for (let i = 0; i < members.length; i++) {
     const m = members[i];
     if (m.email && m.email.trim()) {
@@ -391,7 +350,6 @@ function identifyMember(msg, body, members) {
     }
   }
 
-  // If not forwarded from another member, it's sent directly to the script owner (Member #1 / You)
   const ownerEmail = Session.getEffectiveUser().getEmail().toLowerCase();
   const ownerMember = members.find(m => {
     if (!m.email) return false;
@@ -429,7 +387,7 @@ function identifyBank(from, subject, body) {
 }
 
 /**
- * Extract Amount, Total Limit, Available Limit & Due Date from email body or subject
+ * Extract Amount, Total Limit, Available Limit & Due Date
  */
 function extractStatementMetrics(subject, body, msg) {
   const now = new Date();
@@ -439,25 +397,21 @@ function extractStatementMetrics(subject, body, msg) {
   let totalLimit = 0;
   let availableLimit = 0;
 
-  // Match statement due: เช่น "ยอดเรียกเก็บ 1,250.00 บาท" หรือ "ยอดรวม 1,250.00"
   const amountMatch = body.match(/(?:ยอดเรียกเก็บ|ยอดชำระรอบนี้|ยอดที่ต้องชำระ|ยอดรวมรอบบิล|Total Amount Due|Amount Due)[^\d]{0,25}([0-9,]+\.[0-9]{2})/i);
   if (amountMatch) {
     amount = parseFloat(amountMatch[1].replace(/,/g, ''));
   }
 
-  // Match total credit limit: เช่น "วงเงินบัตร 50,000.00" หรือ "วงเงินรวม"
   const totalLimitMatch = body.match(/(?:วงเงินบัตร|วงเงินรวม|วงเงินที่ได้รับอนุมัติ|Credit Limit|Total Limit)[^\d]{0,25}([0-9,]+\.[0-9]{2})/i);
   if (totalLimitMatch) {
     totalLimit = parseFloat(totalLimitMatch[1].replace(/,/g, ''));
   }
 
-  // Match available credit limit: เช่น "วงเงินคงเหลือ 35,000.00"
   const availLimitMatch = body.match(/(?:วงเงินคงเหลือ|วงเงินคงเหลือที่ใช้ได้|Available Credit|Available Limit)[^\d]{0,25}([0-9,]+\.[0-9]{2})/i);
   if (availLimitMatch) {
     availableLimit = parseFloat(availLimitMatch[1].replace(/,/g, ''));
   }
 
-  // Match date pattern: เช่น "ครบกำหนดชำระ 15/10/2026" หรือ "15 ต.ค. 2569"
   const dateMatch = body.match(/(?:ครบกำหนด|Payment Due Date|Due Date)[^\d]{0,25}(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/i);
   if (dateMatch) {
     dueDate = dateMatch[1];
@@ -576,7 +530,6 @@ function createJsonResponse(data) {
  * Run this function ONCE from GAS editor to automatically scan emails every 6 hours
  */
 function setupAutoScanTrigger() {
-  // Delete existing triggers
   const triggers = ScriptApp.getProjectTriggers();
   for (let i = 0; i < triggers.length; i++) {
     if (triggers[i].getHandlerFunction() === 'scanEmailStatements') {
@@ -584,7 +537,6 @@ function setupAutoScanTrigger() {
     }
   }
 
-  // Set every 6 hours
   ScriptApp.newTrigger('scanEmailStatements')
     .timeBased()
     .everyHours(6)
