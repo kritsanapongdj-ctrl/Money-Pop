@@ -31,7 +31,8 @@ export default function CreditSourceModal({
         availableLimit: editingSource.availableLimit || '',
         currentMonthDue: editingSource.currentMonthDue || '',
         dueDate: editingSource.dueDate || '',
-        billingCycleDay: editingSource.billingCycleDay || ''
+        billingCycleDay: editingSource.billingCycleDay || '',
+        pdfPassword: editingSource.pdfPassword || ''
       };
     }
     return {
@@ -42,7 +43,8 @@ export default function CreditSourceModal({
       availableLimit: '',
       currentMonthDue: '',
       dueDate: '',
-      billingCycleDay: ''
+      billingCycleDay: '',
+      pdfPassword: ''
     };
   });
 
@@ -212,6 +214,22 @@ export default function CreditSourceModal({
                 className={theme.input} 
               />
             </div>
+          </div>
+
+          <div className="bg-[#EEF2FF] p-3 rounded-xl border-2 border-[#12161A] space-y-2">
+            <label className="block text-xs font-black text-[#12161A]">
+              รหัสปลดล็อก PDF e-Statement ของบัตรนี้ (ถ้ามี)
+            </label>
+            <input 
+              type="text" 
+              placeholder="เช่น วดป.เกิด 25101990 หรือ ปชช. 4 ตัวท้าย" 
+              value={formData.pdfPassword || ''} 
+              onChange={(e) => setFormData({ ...formData, pdfPassword: e.target.value })} 
+              className={`${theme.input} font-mono text-xs`} 
+            />
+            <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">
+              ใส่ไว้เพื่อให้ระบบ GAS นำไปปลดล็อกอ่านยอด วงเงินรวม/วงเงินใช้ได้ จากไฟล์ e-Statement ของธนาคารนี้โดยอัตโนมัติ
+            </p>
           </div>
 
           <div className="pt-2">

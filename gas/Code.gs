@@ -207,18 +207,32 @@ function identifyBank(from, subject, body) {
 }
 
 /**
- * Extract Amount & Due Date from email body or subject
+ * Extract Amount, Total Limit, Available Limit & Due Date from email body or subject
  */
 function extractStatementMetrics(subject, body, msg) {
   const now = new Date();
   const currentMonth = Utilities.formatDate(now, 'GMT+7', 'yyyy-MM');
   let amount = 0;
   let dueDate = '';
+  let totalLimit = 0;
+  let availableLimit = 0;
 
-  // Match currency pattern: เช่น "ยอดเรียกเก็บ 1,250.00 บาท" หรือ "ยอดรวม 1,250.00"
-  const amountMatch = body.match(/(?:ยอดเรียกเก็บ|ยอดชำระรอบนี้|ยอดที่ต้องชำระ|ยอดรวม|Total Amount|Amount Due)[^\d]{0,25}([0-9,]+\.[0-9]{2})/i);
+  // Match statement due: เช่น "ยอดเรียกเก็บ 1,250.00 บาท" หรือ "ยอดรวม 1,250.00"
+  const amountMatch = body.match(/(?:ยอดเรียกเก็บ|ยอดชำระรอบนี้|ยอดที่ต้องชำระ|ยอดรวมรอบบิล|Total Amount Due|Amount Due)[^\d]{0,25}([0-9,]+\.[0-9]{2})/i);
   if (amountMatch) {
     amount = parseFloat(amountMatch[1].replace(/,/g, ''));
+  }
+
+  // Match total credit limit: เช่น "วงเงินบัตร 50,000.00" หรือ "วงเงินรวม"
+  const totalLimitMatch = body.match(/(?:วงเงินบัตร|วงเงินรวม|วงเงินที่ได้รับอนุมัติ|Credit Limit|Total Limit)[^\d]{0,25}([0-9,]+\.[0-9]{2})/i);
+  if (totalLimitMatch) {
+    totalLimit = parseFloat(totalLimitMatch[1].replace(/,/g, ''));
+  }
+
+  // Match available credit limit: เช่น "วงเงินคงเหลือ 35,000.00"
+  const availLimitMatch = body.match(/(?:วงเงินคงเหลือ|วงเงินคงเหลือที่ใช้ได้|Available Credit|Available Limit)[^\d]{0,25}([0-9,]+\.[0-9]{2})/i);
+  if (availLimitMatch) {
+    availableLimit = parseFloat(availLimitMatch[1].replace(/,/g, ''));
   }
 
   // Match date pattern: เช่น "ครบกำหนดชำระ 15/10/2026" หรือ "15 ต.ค. 2569"
@@ -229,6 +243,8 @@ function extractStatementMetrics(subject, body, msg) {
 
   return {
     amount: amount,
+    totalLimit: totalLimit,
+    availableLimit: availableLimit,
     dueDate: dueDate,
     month: currentMonth
   };
@@ -245,6 +261,8 @@ function updateMemberCreditSource(db, memberId, sourceName, sourceType, metrics)
       name: sourceName,
       type: sourceType,
       ownerId: String(memberId),
+      totalLimit: metrics.totalLimit || 0,
+      availableLimit: metrics.availableLimit || 0,
       statementDue: metrics.amount,
       dueDate: metrics.dueDate,
       updatedAt: Date.now()
@@ -252,6 +270,8 @@ function updateMemberCreditSource(db, memberId, sourceName, sourceType, metrics)
     db.sources.push(src);
   } else {
     src.statementDue = metrics.amount;
+    if (metrics.totalLimit > 0) src.totalLimit = metrics.totalLimit;
+    if (metrics.availableLimit > 0) src.availableLimit = metrics.availableLimit;
     if (metrics.dueDate) src.dueDate = metrics.dueDate;
     src.updatedAt = Date.now();
   }
