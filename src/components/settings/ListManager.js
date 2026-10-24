@@ -44,14 +44,14 @@ export default function ListManager({ title, data, updateDB, dataKey, icon: Icon
         />
         {hasEmail && (
           <input 
-            type="email" 
+            type="text" 
             value={email} 
             onChange={(e) => setEmail(e.target.value)} 
-            aria-label="อีเมลสมาชิก"
+            aria-label="อีเมลสมาชิก (ใส่ได้หลายอีเมล คั่นด้วยเครื่องหมายจุลภาค , )"
             spellCheck={false}
             autoComplete="off"
             className={`${theme.input} text-xs py-2`} 
-            placeholder="อีเมล…" 
+            placeholder="อีเมล (ใส่ได้หลายอีเมล คั่นด้วย , )…" 
           />
         )}
         <button 

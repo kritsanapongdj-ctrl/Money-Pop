@@ -159,24 +159,34 @@ function scanEmailStatements() {
 }
 
 /**
- * Identify family member based on forwarding headers or body
+ * Identify family member based on forwarding headers or body (supports multiple comma-separated emails per member)
  */
 function identifyMember(msg, body, members) {
-  // Check if forwarded: Look for "Forwarded message From: member@gmail.com"
+  // Check if forwarded from any of the member's registered emails
   for (let i = 0; i < members.length; i++) {
     const m = members[i];
     if (m.email && m.email.trim()) {
-      const emailPattern = new RegExp(m.email.trim(), 'i');
-      if (emailPattern.test(body)) {
-        return m;
+      const emailList = m.email.split(/[,;\s]+/).filter(Boolean);
+      for (let j = 0; j < emailList.length; j++) {
+        const emailAddr = emailList[j].trim();
+        if (emailAddr) {
+          const emailPattern = new RegExp(emailAddr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+          if (emailPattern.test(body)) {
+            return m;
+          }
+        }
       }
     }
   }
 
   // If not forwarded from another member, it's sent directly to the script owner (Member #1 / You)
-  // Usually the script owner is the current user or first admin member
-  const ownerEmail = Session.getEffectiveUser().getEmail();
-  const ownerMember = members.find(m => m.email && m.email.toLowerCase() === ownerEmail.toLowerCase()) || members[0];
+  const ownerEmail = Session.getEffectiveUser().getEmail().toLowerCase();
+  const ownerMember = members.find(m => {
+    if (!m.email) return false;
+    const list = m.email.toLowerCase().split(/[,;\s]+/).filter(Boolean);
+    return list.includes(ownerEmail);
+  }) || members[0];
+
   return ownerMember;
 }
 
