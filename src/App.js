@@ -8,6 +8,7 @@ import BottomNav from './components/navigation/BottomNav';
 import Toast from './components/common/Toast';
 import Dashboard from './components/dashboard/Dashboard';
 import ExpenseList from './components/expenses/ExpenseList';
+import PersonalCreditVault from './components/profile/PersonalCreditVault';
 import ReceiptList from './components/receipts/ReceiptList';
 import Settings from './components/settings/Settings';
 
@@ -87,40 +88,42 @@ export default function App() {
 
         <main className="flex-1 overflow-y-auto sm:p-5 pb-20 custom-scrollbar">
           {/* Sticky Bank Filter Dock */}
-          <div className="sticky top-0 bg-[#F5F6F0]/95 backdrop-blur-md z-10 px-4 py-2.5 border-b-2 border-[#12161A] mb-4 flex gap-2 items-center">
-            <div className="flex-1 min-w-0">
-              <input 
-                type="month" 
-                value={filters.month} 
-                onChange={(e) => setFilters({ ...filters, month: e.target.value })} 
-                className="w-full bg-white border-2 border-[#12161A] text-[#12161A] font-bold rounded-xl px-2.5 py-1.5 text-xs shadow-[2px_2px_0px_#12161A] focus:outline-none focus:ring-2 focus:ring-[#2554FF] transition-all" 
-              />
+          {(tab === 'dashboard' || tab === 'expenses') && (
+            <div className="sticky top-0 bg-[#F5F6F0]/95 backdrop-blur-md z-10 px-4 py-2.5 border-b-2 border-[#12161A] mb-4 flex gap-2 items-center">
+              <div className="flex-1 min-w-0">
+                <input 
+                  type="month" 
+                  value={filters.month} 
+                  onChange={(e) => setFilters({ ...filters, month: e.target.value })} 
+                  className="w-full bg-white border-2 border-[#12161A] text-[#12161A] font-bold rounded-xl px-2.5 py-1.5 text-xs shadow-[2px_2px_0px_#12161A] focus:outline-none focus:ring-2 focus:ring-[#2554FF] transition-all" 
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <select 
+                  value={filters.payer} 
+                  onChange={(e) => setFilters({ ...filters, payer: e.target.value })} 
+                  className="w-full bg-white border-2 border-[#12161A] text-[#12161A] font-bold rounded-xl px-2 py-1.5 text-xs shadow-[2px_2px_0px_#12161A] focus:outline-none focus:ring-2 focus:ring-[#2554FF] transition-all truncate"
+                >
+                  <option value="">👤 ทุกคน</option>
+                  {dbData.members.map((m) => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex-1 min-w-0">
+                <select 
+                  value={filters.category} 
+                  onChange={(e) => setFilters({ ...filters, category: e.target.value })} 
+                  className="w-full bg-white border-2 border-[#12161A] text-[#12161A] font-bold rounded-xl px-2 py-1.5 text-xs shadow-[2px_2px_0px_#12161A] focus:outline-none focus:ring-2 focus:ring-[#2554FF] transition-all truncate"
+                >
+                  <option value="">📁 ทุกหมวด</option>
+                  {dbData.categories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <select 
-                value={filters.payer} 
-                onChange={(e) => setFilters({ ...filters, payer: e.target.value })} 
-                className="w-full bg-white border-2 border-[#12161A] text-[#12161A] font-bold rounded-xl px-2 py-1.5 text-xs shadow-[2px_2px_0px_#12161A] focus:outline-none focus:ring-2 focus:ring-[#2554FF] transition-all truncate"
-              >
-                <option value="">👤 ทุกคน</option>
-                {dbData.members.map((m) => (
-                  <option key={m.id} value={m.id}>{m.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex-1 min-w-0">
-              <select 
-                value={filters.category} 
-                onChange={(e) => setFilters({ ...filters, category: e.target.value })} 
-                className="w-full bg-white border-2 border-[#12161A] text-[#12161A] font-bold rounded-xl px-2 py-1.5 text-xs shadow-[2px_2px_0px_#12161A] focus:outline-none focus:ring-2 focus:ring-[#2554FF] transition-all truncate"
-              >
-                <option value="">📁 ทุกหมวด</option>
-                {dbData.categories.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
+          )}
 
           {/* Tab Views */}
           {tab === 'dashboard' && (
@@ -156,6 +159,18 @@ export default function App() {
             />
           )}
 
+          {tab === 'vault' && (
+            <PersonalCreditVault 
+              currentUser={currentUser}
+              members={dbData.members}
+              sources={dbData.sources}
+              expenses={dbData.expenses}
+              updateDB={updateDB}
+              showToast={showToast}
+              onOpenUserModal={() => setShowUserModal(true)}
+            />
+          )}
+
           {tab === 'receipts' && (
             <ReceiptList 
               receiptHistory={receiptHistory} 
@@ -170,6 +185,7 @@ export default function App() {
               updateDB={updateDB} 
               onExportData={handleExportData} 
               onImportData={handleImportData} 
+              currentUser={currentUser}
             />
           )}
         </main>

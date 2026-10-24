@@ -260,12 +260,39 @@ export default function ExpenseFormModal({
                 required
               >
                 <option value="">เลือกช่องทาง...</option>
-                {dbData.sources.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
+                {dbData.sources.map((s) => {
+                  const owner = s.ownerId ? dbData.members.find(m => String(m.id) === String(s.ownerId)) : null;
+                  return (
+                    <option key={s.id} value={s.id}>
+                      {s.name} {owner ? `(เครดิต: ${owner.name})` : ''}
+                    </option>
+                  );
+                })}
               </select>
             </div>
           </div>
+
+          {/* Credit Source Ownership Badge */}
+          {(() => {
+            const selectedSource = dbData.sources.find(s => String(s.id) === String(formData.sourceId));
+            const owner = selectedSource?.ownerId ? dbData.members.find(m => String(m.id) === String(selectedSource.ownerId)) : null;
+            if (!owner) return null;
+
+            const isBorrowing = formData.payerType === 'single' 
+              ? (String(formData.payerId) !== String(owner.id))
+              : true;
+
+            return (
+              <div className="bg-[#EEF2FF] border-2 border-[#12161A] shadow-[2px_2px_0px_#12161A] rounded-xl p-2.5 text-xs text-[#12161A] font-bold flex items-center justify-between">
+                <span>💳 บิลนี้ใช้เครดิตของ: <span className="text-[#2554FF] font-black">{owner.name}</span></span>
+                {isBorrowing && (
+                  <span className="text-[10px] text-[#92400E] bg-[#FEF3C7] border border-[#D97706] px-1.5 py-0.5 rounded-md font-black">
+                    ยืมวงเงิน (บันทึกทวงคืน)
+                  </span>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Payment Type */}
           <div className="bg-[#F5F6F0] p-3.5 rounded-xl border-2 border-[#12161A] shadow-[2px_2px_0px_#12161A]">

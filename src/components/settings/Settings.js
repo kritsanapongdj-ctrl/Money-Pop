@@ -1,8 +1,12 @@
-import React from 'react';
-import { SlidersHorizontal, ShieldCheck, Download, Upload, Users, ShoppingBag, CreditCard } from 'lucide-react';
+import React, { useState } from 'react';
+import { SlidersHorizontal, ShieldCheck, Download, Upload, Users, ShoppingBag, CreditCard, Smartphone } from 'lucide-react';
 import ListManager from './ListManager';
+import SetupGuideModal from '../modals/SetupGuideModal';
 
-export default function Settings({ dbData, updateDB, onExportData, onImportData }) {
+export default function Settings({ dbData, updateDB, onExportData, onImportData, currentUser }) {
+  const [guideOpen, setGuideOpen] = useState(false);
+  const currentMember = dbData.members.find(m => String(m.id) === String(currentUser));
+
   return (
     <div className="px-4 sm:px-0 space-y-4">
       <div className="flex items-center gap-2 mb-3">
@@ -12,6 +16,28 @@ export default function Settings({ dbData, updateDB, onExportData, onImportData 
         <h2 className="text-base sm:text-lg font-black text-[#12161A] tracking-tight">
           ตั้งค่าระบบและการจัดการข้อมูล
         </h2>
+      </div>
+
+      {/* Android Sync Setup Card */}
+      <div className="bg-[#EEF2FF] border-2 border-[#12161A] shadow-[3px_3px_0px_#12161A] rounded-2xl p-4 flex justify-between items-center">
+        <div>
+          <span className="text-[10px] font-black uppercase text-[#2554FF] tracking-wider block">
+            ANDROID INTEGRATION
+          </span>
+          <h3 className="text-sm font-black text-[#12161A] mt-0.5">
+            คู่มือเชื่อมต่อมือถือ Android (MacroDroid)
+          </h3>
+          <p className="text-[11px] text-slate-600 font-semibold mt-0.5">
+            วิธีดักบิล Shopee, Line BK, KTC และตั้งค่ากันระบบปิดแอป 4 จุด
+          </p>
+        </div>
+        <button 
+          onClick={() => setGuideOpen(true)}
+          className="bg-[#2554FF] hover:bg-[#1B40DF] text-white border-2 border-[#12161A] shadow-[2px_2px_0px_#12161A] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none px-3.5 py-2 rounded-xl text-xs font-black shrink-0 flex items-center gap-1.5 transition cursor-pointer"
+        >
+          <Smartphone size={14} />
+          เปิดคู่มือ
+        </button>
       </div>
 
       {/* Backup & Restore Card */}
@@ -73,6 +99,13 @@ export default function Settings({ dbData, updateDB, onExportData, onImportData 
           icon={CreditCard} 
         />
       </div>
+
+      <SetupGuideModal 
+        show={guideOpen}
+        onClose={() => setGuideOpen(false)}
+        currentUser={currentUser}
+        currentMemberName={currentMember ? currentMember.name : ''}
+      />
     </div>
   );
 }
