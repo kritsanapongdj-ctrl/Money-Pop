@@ -93,12 +93,13 @@ function loadDatabase() {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     if (ss) {
-      // Force load all expenses if missing or empty
-      if (!db.expenses || db.expenses.length === 0) {
+      // Force reload all expenses if missing or if cached with 0 amounts
+      const hasZeroAmounts = db.expenses && db.expenses.length > 0 && db.expenses.every(e => !e.totalAmount || e.totalAmount === 0);
+      if (!db.expenses || db.expenses.length === 0 || hasZeroAmounts) {
         const sheetExpenses = loadExpensesFromSheet(ss);
         if (sheetExpenses && sheetExpenses.length > 0) {
           db.expenses = sheetExpenses;
-          Logger.log('Loaded ' + sheetExpenses.length + ' expenses from sheet!');
+          Logger.log('Loaded ' + sheetExpenses.length + ' expenses with full amounts from sheet!');
         }
       }
 
@@ -164,7 +165,7 @@ function loadExpensesFromSheet(ss) {
     const row = rawValues[r];
     if (!row || row.every(cell => cell === '' || cell === null || cell === undefined)) continue;
 
-    const exp = {};
+    let exp = {};
     for (let c = 0; c < headers.length && c < row.length; c++) {
       const key = headers[c];
       let val = row[c];
@@ -179,12 +180,24 @@ function loadExpensesFromSheet(ss) {
       exp[key] = val;
     }
 
-    // Map fields
-    exp.id = String(exp.id || (Date.now() + r));
-    exp.title = String(exp.title || exp.name || exp['ชื่อรายการ'] || exp['รายการ'] || ('รายการบิล #' + r));
-    exp.totalAmount = parseFloat(exp.totalAmount || exp.amount || exp['ยอดเงิน'] || exp['จำนวนเงิน'] || 0) || 0;
+    // If pristine JSON_DATA column exists, use it directly!
+    if (exp.JSON_DATA && typeof exp.JSON_DATA === 'object') {
+      const orig = exp.JSON_DATA;
+      exp = Object.assign({}, orig);
+    } else if (typeof exp.JSON_DATA === 'string' && exp.JSON_DATA.trim().startsWith('{')) {
+      try {
+        exp = Object.assign({}, JSON.parse(exp.JSON_DATA));
+      } catch (e) {}
+    }
 
-    let m = exp.month || exp.date || exp['เดือน'] || Utilities.formatDate(new Date(), 'GMT+7', 'yyyy-MM');
+    // Normalization fallbacks
+    if (!exp.id) exp.id = String(row[0] || (Date.now() + r));
+    if (!exp.title) exp.title = String(exp['ชื่อรายการ'] || exp.name || ('รายการบิล #' + r));
+    if (exp.totalAmount === undefined || exp.totalAmount === 0) {
+      exp.totalAmount = parseFloat(exp['ยอดต่อเดือน(บาท)'] || exp['ยอดเงิน'] || exp.amount || 0) || 0;
+    }
+
+    let m = exp.month || exp['เดือนประจำรอบ'] || exp.date || Utilities.formatDate(new Date(), 'GMT+7', 'yyyy-MM');
     if (m instanceof Date) {
       m = Utilities.formatDate(m, 'GMT+7', 'yyyy-MM');
     } else if (typeof m === 'string' && m.length > 7) {
@@ -194,9 +207,9 @@ function loadExpensesFromSheet(ss) {
 
     exp.categoryId = String(exp.categoryId || exp.category || '');
     exp.sourceId = String(exp.sourceId || exp.source || '');
-    exp.paymentType = exp.paymentType || 'normal';
+    exp.paymentType = exp.paymentType || (exp['รูปแบบชำระ'] === 'ผ่อนชำระ' ? 'installment' : 'normal');
     exp.payerType = exp.payerType || 'single';
-    exp.status = exp.status || 'pending';
+    exp.status = exp.status || (exp['สถานะ'] === 'จ่ายแล้ว' ? 'paid' : 'pending');
 
     if (exp.installmentMonths) exp.installmentMonths = parseInt(exp.installmentMonths) || 1;
     if (exp.currentInstallment) exp.currentInstallment = parseInt(exp.currentInstallment) || 1;
