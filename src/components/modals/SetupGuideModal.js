@@ -104,6 +104,10 @@ export default function SetupGuideModal({ show, onClose, currentUser, currentMem
             <p className="text-slate-600 font-medium ml-6 leading-relaxed">
               ใน MacroDroid ให้สร้าง Action ยิง HTTP Post โดยวาง <b>Personal Webhook URL</b> จากด้านบนนี้ลงไป เมื่อมีแจ้งเตือนบิล Shopee, Line BK, UOB หรือ KTC ตัวเลขจะซิงค์เข้า Money-Pop ทันที
             </p>
+            <div className="mt-2 ml-6 bg-white border border-[#12161A] rounded-lg p-2 text-[11px] text-slate-700">
+              <span className="font-black text-[#2554FF] block">💡 กรณีดัก LINE BK Alert ผ่านแอป LINE:</span>
+              เลือกแอปเป็น <b>LINE</b> และกำหนดตัวกรองหัวข้อ (Title) เป็น <code>*LINE BK*</code> เพื่อดักเฉพาะบิลสินเชื่อ ปลอดภัย 100% ไม่ปนกับแชทส่วนตัว
+            </div>
           </div>
         </div>
 
