@@ -75,151 +75,178 @@ function doPost(e) {
  * ----------------------------------------------------------------------------
  */
 function loadDatabase() {
-  // 1. Try reading from ScriptProperties (Main key)
+  let db = {
+    members: [],
+    categories: [],
+    sources: [],
+    savings: { currentAmount: 0, transactions: [] },
+    expenses: []
+  };
+
+  // 1. Try reading from ScriptProperties
   const jsonStr = SCRIPT_PROP.getProperty(DB_PROP_KEY);
   if (jsonStr) {
     try {
       const parsed = JSON.parse(jsonStr);
-      if (parsed && (
-        (Array.isArray(parsed.members) && parsed.members.length > 0) || 
-        (Array.isArray(parsed.expenses) && parsed.expenses.length > 0)
-      )) {
-        return parsed;
+      if (parsed && typeof parsed === 'object') {
+        db = Object.assign(db, parsed);
       }
     } catch (e) {}
   }
 
-  // 2. Try any legacy ScriptProperties keys (e.g. moneyPopDB_Sheets, DATA, data, database, db)
-  try {
-    const allProps = SCRIPT_PROP.getProperties();
-    for (const key in allProps) {
-      if (key !== DB_PROP_KEY) {
-        try {
-          const val = JSON.parse(allProps[key]);
-          if (val && ((val.members && val.members.length > 0) || (val.expenses && val.expenses.length > 0))) {
-            Logger.log('Restored DB from legacy ScriptProperty key: ' + key);
-            saveDatabase(val);
-            return val;
-          }
-        } catch (e) {}
-      }
-    }
-  } catch (err) {}
-
-  // 3. Try Active Google Spreadsheet (Bound Container)
+  // 2. If spreadsheet is bound, check sheets for missing expenses or data
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     if (ss) {
-      // Check each sheet to see if cell A1 contains the JSON database string
-      const sheets = ss.getSheets();
-      for (let i = 0; i < sheets.length; i++) {
-        const sheet = sheets[i];
-        const valA1 = sheet.getRange(1, 1).getValue();
-        if (typeof valA1 === 'string' && valA1.trim().startsWith('{')) {
-          try {
-            const parsed = JSON.parse(valA1);
-            if (parsed && ((parsed.members && parsed.members.length > 0) || (parsed.expenses && parsed.expenses.length > 0))) {
-              Logger.log('Restored DB from Sheet "' + sheet.getName() + '" cell A1');
-              saveDatabase(parsed);
-              return parsed;
-            }
-          } catch (e) {}
+      // Check RawData sheet
+      const rawData = loadFromRawDataSheet(ss);
+      if (rawData) {
+        if (!db.members || db.members.length === 0) db.members = rawData.members || [];
+        if (!db.categories || db.categories.length === 0) db.categories = rawData.categories || [];
+        if (!db.sources || db.sources.length === 0) db.sources = rawData.sources || [];
+        if (!db.savings || !db.savings.currentAmount) db.savings = rawData.savings || db.savings;
+        if ((!db.expenses || db.expenses.length === 0) && rawData.expenses && rawData.expenses.length > 0) {
+          db.expenses = rawData.expenses;
         }
       }
 
-      // Check if tabs are structured by name (e.g. members, expenses, etc.)
-      const tabularData = extractFromSheetTabs(ss);
-      if (tabularData && (tabularData.members.length > 0 || tabularData.expenses.length > 0)) {
-        Logger.log('Restored DB from tabular sheets');
-        saveDatabase(tabularData);
-        return tabularData;
+      // Check Expenses sheet (232 rows) if db.expenses is still empty
+      if (!db.expenses || db.expenses.length === 0) {
+        const sheetExpenses = loadExpensesFromSheet(ss);
+        if (sheetExpenses && sheetExpenses.length > 0) {
+          Logger.log('Successfully recovered ' + sheetExpenses.length + ' expenses from Expenses sheet!');
+          db.expenses = sheetExpenses;
+        }
       }
     }
   } catch (err) {
-    Logger.log('Spreadsheet extraction notice: ' + err);
+    Logger.log('Spreadsheet load notice: ' + err);
   }
 
-  // 4. Fallback empty schema
-  return {
-    members: [],
-    categories: [],
-    sources: [],
-    savings: { currentAmount: 0, transactions: [] },
-    expenses: []
-  };
+  // Cache back to ScriptProperties so subsequent reads are instant
+  if ((db.members && db.members.length > 0) || (db.expenses && db.expenses.length > 0)) {
+    SCRIPT_PROP.setProperty(DB_PROP_KEY, JSON.stringify(db));
+  }
+
+  return db;
 }
 
 function saveDatabase(db) {
-  // Save to ScriptProperties
+  // 1. Save to ScriptProperties
   SCRIPT_PROP.setProperty(DB_PROP_KEY, JSON.stringify(db));
 
-  // Also mirror save to active Google Sheet (Cell A1 of 'DB' or first sheet) if bound
+  // 2. Also save to RawData sheet (NEVER overwrite Expenses tabular sheet!)
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     if (ss) {
-      let sheet = ss.getSheetByName('DB');
-      if (!sheet) {
-        sheet = ss.getSheets()[0];
+      let rawSheet = ss.getSheetByName('RawData');
+      if (!rawSheet) {
+        rawSheet = ss.insertSheet('RawData');
       }
-      if (sheet) {
-        sheet.getRange(1, 1).setValue(JSON.stringify(db));
+      if (rawSheet) {
+        rawSheet.getRange(1, 1).setValue(JSON.stringify(db));
       }
     }
-  } catch (err) {
-    // If not a bound script, ignore
-  }
+  } catch (err) {}
 }
 
 /**
- * Helper to parse tabular sheets if data was stored in rows/columns
+ * Load expenses from tabular "Expenses" sheet
  */
-function extractFromSheetTabs(ss) {
-  const result = {
-    members: [],
-    categories: [],
-    sources: [],
-    savings: { currentAmount: 0, transactions: [] },
-    expenses: []
-  };
+function loadExpensesFromSheet(ss) {
+  const sheet = ss.getSheetByName('Expenses') || ss.getSheetByName('expenses');
+  if (!sheet) return [];
+  const lastRow = sheet.getLastRow();
+  const lastCol = sheet.getLastColumn();
+  if (lastRow <= 1 || lastCol < 1) return [];
 
-  function getSheetRows(sheetName) {
-    const s = ss.getSheetByName(sheetName);
-    if (!s) return [];
-    const lastRow = s.getLastRow();
-    const lastCol = s.getLastColumn();
-    if (lastRow <= 1 || lastCol < 1) return [];
-    const values = s.getRange(1, 1, lastRow, lastCol).getValues();
-    const headers = values[0];
-    const rows = [];
-    for (let r = 1; r < values.length; r++) {
-      const obj = {};
-      let hasVal = false;
-      for (let c = 0; c < headers.length; c++) {
-        const h = String(headers[c]).trim();
-        if (!h) continue;
-        let v = values[r][c];
-        if (v !== '' && v !== null && v !== undefined) hasVal = true;
-        if (typeof v === 'string' && (v.startsWith('{') || v.startsWith('['))) {
-          try { v = JSON.parse(v); } catch (e) {}
-        }
-        obj[h] = v;
-      }
-      if (hasVal) rows.push(obj);
+  const rawValues = sheet.getRange(1, 1, lastRow, lastCol).getValues();
+
+  let headerRowIndex = 0;
+  let headers = rawValues[0].map(h => String(h).trim());
+
+  // If cell A1 starts with '{' or is blank, check row 2 or use standard schema
+  if (headers[0] && (headers[0].startsWith('{') || headers[0] === '')) {
+    if (rawValues.length > 2 && typeof rawValues[1][0] === 'string' && !rawValues[1][0].startsWith('{') && isNaN(Number(rawValues[1][0]))) {
+      headers = rawValues[1].map(h => String(h).trim());
+      headerRowIndex = 1;
+    } else {
+      headers = ['id', 'title', 'month', 'categoryId', 'sourceId', 'paymentType', 'totalAmount', 'payerType', 'payerId', 'splitDetails', 'status'];
+      headerRowIndex = 0;
     }
-    return rows;
   }
 
-  result.members = getSheetRows('members').concat(getSheetRows('Members'));
-  result.categories = getSheetRows('categories').concat(getSheetRows('Categories'));
-  result.sources = getSheetRows('sources').concat(getSheetRows('Sources'));
-  result.expenses = getSheetRows('expenses').concat(getSheetRows('Expenses'));
+  const expenses = [];
+  for (let r = headerRowIndex + 1; r < rawValues.length; r++) {
+    const row = rawValues[r];
+    if (!row || row.every(cell => cell === '' || cell === null || cell === undefined)) continue;
 
-  const svSheet = ss.getSheetByName('savings') || ss.getSheetByName('Savings');
-  if (svSheet && svSheet.getLastRow() > 1) {
-    result.savings.currentAmount = parseFloat(svSheet.getRange(2, 1).getValue()) || 0;
+    const exp = {};
+    for (let c = 0; c < headers.length && c < row.length; c++) {
+      const key = headers[c];
+      if (!key) continue;
+      let val = row[c];
+
+      if (typeof val === 'string') {
+        val = val.trim();
+        if ((val.startsWith('{') && val.endsWith('}')) || (val.startsWith('[') && val.endsWith(']'))) {
+          try { val = JSON.parse(val); } catch (e) {}
+        }
+      }
+
+      exp[key] = val;
+    }
+
+    if (!exp.id && exp.title) {
+      exp.id = String(Date.now() + r);
+    }
+    if (exp.totalAmount !== undefined && exp.totalAmount !== '') {
+      exp.totalAmount = parseFloat(exp.totalAmount) || 0;
+    }
+    if (exp.month && exp.month instanceof Date) {
+      exp.month = Utilities.formatDate(exp.month, 'GMT+7', 'yyyy-MM');
+    }
+    if (exp.installmentMonths) {
+      exp.installmentMonths = parseInt(exp.installmentMonths) || 1;
+    }
+    if (exp.currentInstallment) {
+      exp.currentInstallment = parseInt(exp.currentInstallment) || 1;
+    }
+    if (exp.fullTotalAmount) {
+      exp.fullTotalAmount = parseFloat(exp.fullTotalAmount) || exp.totalAmount;
+    }
+
+    if (exp.title || exp.totalAmount > 0) {
+      expenses.push(exp);
+    }
   }
 
-  return result;
+  return expenses;
+}
+
+/**
+ * Load raw JSON database from RawData sheet (if split across columns)
+ */
+function loadFromRawDataSheet(ss) {
+  const sheet = ss.getSheetByName('RawData') || ss.getSheetByName('rawdata');
+  if (!sheet) return null;
+  const lastCol = sheet.getLastColumn();
+  if (lastCol < 1) return null;
+
+  const vals = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  let combined = {};
+
+  for (let c = 0; c < vals.length; c++) {
+    const val = vals[c];
+    if (typeof val === 'string' && val.trim().startsWith('{')) {
+      try {
+        const obj = JSON.parse(val);
+        combined = Object.assign(combined, obj);
+      } catch (e) {}
+    }
+  }
+
+  return Object.keys(combined).length > 0 ? combined : null;
 }
 
 /**
@@ -227,10 +254,29 @@ function extractFromSheetTabs(ss) {
  * Shows exactly what was found in Spreadsheet or Properties.
  */
 function debugRestoreData() {
+  // Clear empty cached expenses from ScriptProperties so it forcefully pulls from sheet
+  const curStr = SCRIPT_PROP.getProperty(DB_PROP_KEY);
+  if (curStr) {
+    try {
+      const cur = JSON.parse(curStr);
+      if (!cur.expenses || cur.expenses.length === 0) {
+        SCRIPT_PROP.deleteProperty(DB_PROP_KEY);
+      }
+    } catch (e) {}
+  }
+
+  const loaded = loadDatabase();
   const report = {
     scriptPropertiesKeys: Object.keys(SCRIPT_PROP.getProperties()),
     spreadsheetFound: false,
-    sheets: []
+    restoredCounts: {
+      members: loaded.members ? loaded.members.length : 0,
+      categories: loaded.categories ? loaded.categories.length : 0,
+      sources: loaded.sources ? loaded.sources.length : 0,
+      expenses: loaded.expenses ? loaded.expenses.length : 0,
+      savingsAmount: loaded.savings ? loaded.savings.currentAmount : 0
+    },
+    sampleExpense: loaded.expenses && loaded.expenses.length > 0 ? loaded.expenses[0] : null
   };
 
   try {
@@ -243,23 +289,13 @@ function debugRestoreData() {
         return {
           name: s.getName(),
           lastRow: s.getLastRow(),
-          lastCol: s.getLastColumn(),
-          cellA1Preview: String(s.getRange(1, 1).getValue()).slice(0, 100)
+          lastCol: s.getLastColumn()
         };
       });
     }
   } catch (e) {
     report.spreadsheetError = e.toString();
   }
-
-  const loaded = loadDatabase();
-  report.restoredCounts = {
-    members: loaded.members ? loaded.members.length : 0,
-    categories: loaded.categories ? loaded.categories.length : 0,
-    sources: loaded.sources ? loaded.sources.length : 0,
-    expenses: loaded.expenses ? loaded.expenses.length : 0,
-    savingsAmount: loaded.savings ? loaded.savings.currentAmount : 0
-  };
 
   Logger.log(JSON.stringify(report, null, 2));
   return report;
