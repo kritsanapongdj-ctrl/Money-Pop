@@ -19,13 +19,13 @@ export default function PartialPayModal({
 
   return (
     <div className="fixed inset-0 bg-[#12161A]/70 backdrop-blur-sm z-[110] flex items-center justify-center p-4 animate-fadeIn">
-      <form onSubmit={onConfirm} className="bg-white border-2 border-[#12161A] shadow-[8px_8px_0px_#12161A] w-full max-w-sm rounded-2xl p-6">
+      <form onSubmit={onConfirm} role="dialog" aria-modal="true" aria-labelledby="partial-pay-title" className="bg-white border-2 border-[#12161A] shadow-[8px_8px_0px_#12161A] w-full max-w-sm rounded-2xl p-6 modal-contain overscroll-contain">
         <div className="flex items-center gap-2 mb-4 pb-2 border-b-2 border-slate-100">
-          <div className="w-8 h-8 rounded-lg bg-[#D97706] text-white border-2 border-[#12161A] shadow-[1.5px_1.5px_0px_#12161A] flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-[#D97706] text-white border-2 border-[#12161A] shadow-[1.5px_1.5px_0px_#12161A] flex items-center justify-center" aria-hidden="true">
             <DollarSign size={16} />
           </div>
           <div>
-            <h3 className="text-base font-black text-[#12161A]">
+            <h3 id="partial-pay-title" className="text-base font-black text-[#12161A]">
               แบ่งจ่ายยอดบิล (Partial Pay)
             </h3>
             <p className="text-[11px] text-slate-500 font-medium">ยอดคงเหลือจะถูกตัดเป็นบิลใหม่</p>
@@ -34,14 +34,15 @@ export default function PartialPayModal({
 
         {exp.payerType === 'split' && !filters.payer && (
           <div className="mb-3">
-            <label className="block text-xs font-black text-[#12161A] mb-1">เลือกผู้ที่แบ่งจ่าย</label>
+            <label htmlFor="partial-pay-member" className="block text-xs font-black text-[#12161A] mb-1">เลือกผู้ที่แบ่งจ่าย</label>
             <select 
+              id="partial-pay-member"
               required 
               value={payerId} 
               onChange={(e) => setPartialPayModal({ ...partialPayModal, payerId: e.target.value })} 
               className={theme.input}
             >
-              <option value="">เลือกสมาชิก...</option>
+              <option value="">เลือกสมาชิก…</option>
               {Object.keys(exp.splitDetails || {})
                 .filter((id) => !exp.splitDetails[id].paid)
                 .map((id) => (
@@ -54,11 +55,13 @@ export default function PartialPayModal({
         )}
 
         <div className="mb-5">
-          <label className="block text-xs font-black text-[#12161A] mb-1">
+          <label htmlFor="partial-pay-amount" className="block text-xs font-black text-[#12161A] mb-1">
             จำนวนเงินที่ต้องการจ่าย (ไม่เกิน {formatCurrency(maxAmount)})
           </label>
           <input 
+            id="partial-pay-amount"
             type="number" 
+            inputMode="decimal"
             required 
             min="0.01"
             max={maxAmount} 

@@ -11,14 +11,14 @@ export default function SplitPayModal({
   if (!splitModal.open) return null;
 
   return (
-    <div className="fixed inset-0 bg-[#12161A]/70 backdrop-blur-sm z-[110] flex items-center justify-center p-4 animate-fadeIn">
-      <div className="bg-white border-2 border-[#12161A] shadow-[8px_8px_0px_#12161A] w-full max-w-sm rounded-2xl p-6">
+    <div className="fixed inset-0 bg-[#12161A]/70 backdrop-blur-sm z-[110] flex items-center justify-center p-4 animate-fadeIn" role="dialog" aria-modal="true" aria-labelledby="split-pay-title">
+      <div className="bg-white border-2 border-[#12161A] shadow-[8px_8px_0px_#12161A] w-full max-w-sm rounded-2xl p-6 modal-contain overscroll-contain">
         <div className="flex items-center gap-2 mb-4 pb-2 border-b-2 border-slate-100">
-          <div className="w-8 h-8 rounded-lg bg-[#2554FF] text-white border-2 border-[#12161A] shadow-[1.5px_1.5px_0px_#12161A] flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-[#2554FF] text-white border-2 border-[#12161A] shadow-[1.5px_1.5px_0px_#12161A] flex items-center justify-center" aria-hidden="true">
             <Users2 size={16} />
           </div>
           <div>
-            <h3 className="text-base font-black text-[#12161A]">
+            <h3 id="split-pay-title" className="text-base font-black text-[#12161A]">
               เลือกผู้จ่ายเงิน (Split Pay)
             </h3>
             <p className="text-[11px] text-slate-500 font-medium">ระบุคนที่ต้องการชำระในรอบนี้</p>

@@ -32,23 +32,27 @@ export default function Header({
 
       <div className="flex items-center gap-2">
         <button 
+          type="button"
           onClick={onOpenUserModal} 
-          className="bg-white hover:bg-[#EEF2FF] text-[#12161A] border-2 border-[#12161A] shadow-[2px_2px_0px_#12161A] px-2.5 py-1.5 rounded-xl font-bold flex items-center text-xs active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all cursor-pointer"
+          aria-label={`ผู้ใช้ปัจจุบัน: ${currentMember ? currentMember.name : 'เลือกผู้ใช้'}`}
+          className="bg-white hover:bg-[#EEF2FF] text-[#12161A] border-2 border-[#12161A] shadow-[2px_2px_0px_#12161A] px-2.5 py-1.5 rounded-xl font-bold flex items-center text-xs active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-[#2554FF]"
         >
-          <div className="w-2 h-2 rounded-full bg-[#10B981] mr-1.5 border border-[#12161A]" />
-          <Users size={13} className="mr-1 text-[#2554FF]" /> 
+          <div className="w-2 h-2 rounded-full bg-[#10B981] mr-1.5 border border-[#12161A]" aria-hidden="true" />
+          <Users size={13} className="mr-1 text-[#2554FF]" aria-hidden="true" /> 
           <span className="truncate max-w-[80px] sm:max-w-none">
             {currentMember ? currentMember.name : 'เลือกผู้ใช้'}
           </span>
         </button>
 
         <button 
+          type="button"
           onClick={() => onRefresh(true)} 
           disabled={isSyncing}
-          className="w-8 h-8 bg-white hover:bg-slate-100 text-[#12161A] border-2 border-[#12161A] shadow-[2px_2px_0px_#12161A] rounded-xl flex items-center justify-center active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all cursor-pointer disabled:opacity-60"
+          aria-label="รีเฟรชข้อมูลคลาวด์"
+          className="w-8 h-8 bg-white hover:bg-slate-100 text-[#12161A] border-2 border-[#12161A] shadow-[2px_2px_0px_#12161A] rounded-xl flex items-center justify-center active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all cursor-pointer disabled:opacity-60 focus-visible:ring-2 focus-visible:ring-[#2554FF]"
           title="รีเฟรชข้อมูลคลาวด์"
         >
-          <RefreshCw size={14} className={isSyncing ? "animate-spin text-[#2554FF]" : "text-[#12161A]"} />
+          <RefreshCw size={14} className={isSyncing ? "animate-spin text-[#2554FF]" : "text-[#12161A]"} aria-hidden="true" />
         </button>
       </div>
     </header>

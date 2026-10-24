@@ -88,11 +88,13 @@ export default function Dashboard({ filteredExps, categories, members, filters }
             </span>
           </div>
           <button 
+            type="button"
             onClick={() => setHideAmount(!hideAmount)}
-            className="flex items-center gap-1 text-xs text-slate-500 hover:text-[#12161A] font-semibold bg-slate-100 hover:bg-slate-200 border border-[#12161A] rounded-lg px-2 py-0.5 transition cursor-pointer"
+            aria-label={hideAmount ? "แสดงยอดเงิน" : "ซ่อนยอดเงิน"}
+            className="flex items-center gap-1 text-xs text-slate-500 hover:text-[#12161A] font-semibold bg-slate-100 hover:bg-slate-200 border border-[#12161A] rounded-lg px-2 py-0.5 transition cursor-pointer focus-visible:ring-2 focus-visible:ring-[#2554FF]"
             title={hideAmount ? "แสดงยอดเงิน" : "ซ่อนยอดเงิน"}
           >
-            {hideAmount ? <EyeOff size={13} /> : <Eye size={13} />}
+            {hideAmount ? <EyeOff size={13} aria-hidden="true" /> : <Eye size={13} aria-hidden="true" />}
             <span className="text-[10px]">{hideAmount ? "ซ่อนอยู่" : "ซ่อนยอด"}</span>
           </button>
         </div>

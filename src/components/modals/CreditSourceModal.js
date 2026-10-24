@@ -64,16 +64,20 @@ export default function CreditSourceModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-[#12161A]/70 backdrop-blur-sm z-[140] flex items-center justify-center p-4 animate-fadeIn">
-      <div className="bg-white border-2 border-[#12161A] shadow-[8px_8px_0px_#12161A] w-full max-w-md rounded-2xl p-6 max-h-[90vh] overflow-y-auto custom-scrollbar">
-        
+    <div className="fixed inset-0 bg-[#12161A]/70 backdrop-blur-sm z-[140] flex items-center justify-center p-4 animate-fadeIn modal-contain">
+      <div 
+        role="dialog" 
+        aria-modal="true" 
+        aria-labelledby="credit-source-title"
+        className="bg-white border-2 border-[#12161A] shadow-[8px_8px_0px_#12161A] w-full max-w-md rounded-2xl p-6 max-h-[90vh] overflow-y-auto custom-scrollbar"
+      >
         <div className="flex justify-between items-center mb-4 pb-3 border-b-2 border-slate-100">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-[#2554FF] text-white border-2 border-[#12161A] shadow-[1.5px_1.5px_0px_#12161A] flex items-center justify-center">
-              <CreditCard size={18} />
+              <CreditCard size={18} aria-hidden="true" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-black text-[#12161A] tracking-tight">
+              <h2 id="credit-source-title" className="text-base sm:text-lg font-black text-[#12161A] tracking-tight">
                 {editingSource ? 'แก้ไขสินเชื่อ / บัตร' : 'เพิ่มสินเชื่อ / บัตรเครดิตใหม่'}
               </h2>
               <p className="text-[11px] text-slate-500 font-bold">
@@ -83,9 +87,10 @@ export default function CreditSourceModal({
           </div>
           <button 
             onClick={onClose} 
-            className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 border border-[#12161A] flex items-center justify-center text-[#12161A] transition cursor-pointer"
+            aria-label="ปิดหน้าต่าง"
+            className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 border border-[#12161A] flex items-center justify-center text-[#12161A] transition cursor-pointer focus-visible:ring-2 focus-visible:ring-[#2554FF]"
           >
-            <X size={18} />
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
 

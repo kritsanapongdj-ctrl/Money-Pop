@@ -53,7 +53,16 @@ export default function ExpenseCard({
       }`}
     >
       <div 
-        className="flex items-center w-2/3 cursor-pointer select-none" 
+        role={st !== 'paid' ? "button" : undefined}
+        tabIndex={st !== 'paid' ? 0 : undefined}
+        aria-label={st !== 'paid' ? `เลือกชำระบิล ${expense.title}` : undefined}
+        onKeyDown={(e) => {
+          if (st !== 'paid' && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            onTogglePay(expense);
+          }
+        }}
+        className="flex items-center w-2/3 cursor-pointer select-none focus-visible:ring-2 focus-visible:ring-[#2554FF] rounded-xl" 
         onClick={() => { if (st !== 'paid') onTogglePay(expense); }}
       >
         {st !== 'paid' && (
@@ -61,6 +70,7 @@ export default function ExpenseCard({
             type="checkbox" 
             checked={isSelected} 
             readOnly 
+            aria-label={`เลือกชำระ ${expense.title}`}
             className="w-5 h-5 mr-2.5 accent-[#2554FF] rounded border-2 border-[#12161A] cursor-pointer pointer-events-none" 
           />
         )}
@@ -137,18 +147,20 @@ export default function ExpenseCard({
 
           <button 
             onClick={(ev) => { ev.stopPropagation(); onEdit(expense); }} 
-            className="w-6 h-6 rounded-md bg-white hover:bg-slate-100 border border-[#12161A] flex items-center justify-center text-slate-700 transition cursor-pointer"
+            aria-label={`แก้ไขบิล ${expense.title}`}
+            className="w-7 h-7 rounded-lg bg-white hover:bg-slate-100 border border-[#12161A] flex items-center justify-center text-slate-700 transition cursor-pointer focus-visible:ring-2 focus-visible:ring-[#2554FF]"
             title="แก้ไขบิล"
           >
-            <Edit2 size={12} />
+            <Edit2 size={13} aria-hidden="true" />
           </button>
           
           <button 
             onClick={(ev) => { ev.stopPropagation(); onDelete(expense); }} 
-            className="w-6 h-6 rounded-md bg-white hover:bg-rose-50 border border-[#12161A] flex items-center justify-center text-[#E11D48] transition cursor-pointer"
+            aria-label={`ลบบิล ${expense.title}`}
+            className="w-7 h-7 rounded-lg bg-white hover:bg-rose-50 border border-[#12161A] flex items-center justify-center text-[#E11D48] transition cursor-pointer focus-visible:ring-2 focus-visible:ring-[#2554FF]"
             title="ลบบิล"
           >
-            <Trash2 size={12} />
+            <Trash2 size={13} aria-hidden="true" />
           </button>
         </div>
       </div>

@@ -94,6 +94,7 @@ export default function PersonalCreditVault({
 
         <div className="flex items-center gap-2">
           <button 
+            type="button"
             onClick={() => setGuideOpen(true)}
             className="flex-1 sm:flex-none bg-white hover:bg-slate-100 text-[#12161A] border-2 border-[#12161A] shadow-[2px_2px_0px_#12161A] px-3 py-1.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1 active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition cursor-pointer"
           >
@@ -102,6 +103,7 @@ export default function PersonalCreditVault({
           </button>
 
           <button 
+            type="button"
             onClick={() => { setEditingSource(null); setModalOpen(true); }}
             className="flex-1 sm:flex-none bg-[#2554FF] hover:bg-[#1B40DF] text-white border-2 border-[#12161A] shadow-[2px_2px_0px_#12161A] px-3.5 py-1.5 rounded-xl font-black text-xs flex items-center justify-center gap-1 active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition cursor-pointer"
           >
@@ -233,18 +235,22 @@ export default function PersonalCreditVault({
 
                     <div className="flex items-center gap-1.5">
                       <button 
+                        type="button"
                         onClick={() => { setEditingSource(src); setModalOpen(true); }}
-                        className="w-7 h-7 rounded-lg bg-white hover:bg-slate-100 border border-[#12161A] flex items-center justify-center text-slate-700 transition cursor-pointer"
+                        aria-label={`แก้ไข ${src.name}`}
+                        className="w-7 h-7 rounded-lg bg-white hover:bg-slate-100 border border-[#12161A] flex items-center justify-center text-slate-700 transition cursor-pointer focus-visible:ring-2 focus-visible:ring-[#2554FF]"
                         title="แก้ไขข้อมูล"
                       >
-                        <Edit2 size={13} />
+                        <Edit2 size={13} aria-hidden="true" />
                       </button>
                       <button 
+                        type="button"
                         onClick={() => handleDeleteSource(src)}
-                        className="w-7 h-7 rounded-lg bg-white hover:bg-rose-50 border border-[#12161A] flex items-center justify-center text-[#E11D48] transition cursor-pointer"
+                        aria-label={`ลบ ${src.name}`}
+                        className="w-7 h-7 rounded-lg bg-white hover:bg-rose-50 border border-[#12161A] flex items-center justify-center text-[#E11D48] transition cursor-pointer focus-visible:ring-2 focus-visible:ring-[#2554FF]"
                         title="ลบ"
                       >
-                        <Trash2 size={13} />
+                        <Trash2 size={13} aria-hidden="true" />
                       </button>
                     </div>
                   </div>

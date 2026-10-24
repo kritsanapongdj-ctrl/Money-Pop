@@ -15,13 +15,13 @@ export default function ReceiptModal({
   const author = members.find((m) => String(m.id) === String(authorId));
 
   return (
-    <div className="fixed inset-0 bg-[#12161A]/70 backdrop-blur-sm z-[120] flex items-center justify-center p-4 animate-fadeIn">
+    <div className="fixed inset-0 bg-[#12161A]/70 backdrop-blur-sm z-[120] flex items-center justify-center p-4 animate-fadeIn" role="dialog" aria-modal="true" aria-labelledby="receipt-title">
       {/* Bank Slip Voucher Card */}
-      <div className="bg-white border-2 border-[#12161A] shadow-[8px_8px_0px_#12161A] w-full max-w-sm rounded-2xl p-6 relative overflow-visible">
+      <div className="bg-white border-2 border-[#12161A] shadow-[8px_8px_0px_#12161A] w-full max-w-sm rounded-2xl p-6 relative overflow-visible modal-contain overscroll-contain">
         
         {/* Top Header */}
         <div className="text-center mb-4 pt-1">
-          <div className="mx-auto w-12 h-12 bg-[#059669] text-white border-2 border-[#12161A] shadow-[2px_2px_0px_#12161A] rounded-full flex items-center justify-center mb-3">
+          <div className="mx-auto w-12 h-12 bg-[#059669] text-white border-2 border-[#12161A] shadow-[2px_2px_0px_#12161A] rounded-full flex items-center justify-center mb-3" aria-hidden="true">
             {receiptModal.isHistory ? (
               <FileText size={22} className="stroke-[2.5]" />
             ) : (
@@ -31,7 +31,7 @@ export default function ReceiptModal({
           <span className="text-[10px] font-black tracking-widest text-[#059669] uppercase bg-[#D1FAE5] border border-[#059669] px-2 py-0.5 rounded-full">
             OFFICIAL E-SLIP VOUCHER
           </span>
-          <h2 className="text-xl font-black tracking-tight text-[#12161A] mt-2">
+          <h2 id="receipt-title" className="text-xl font-black tracking-tight text-[#12161A] mt-2">
             {receiptModal.isHistory ? 'รายละเอียดใบเสร็จ' : 'ทำรายการสำเร็จแล้ว'}
           </h2>
           <p className="text-xs text-slate-500 font-semibold mt-1">
@@ -78,6 +78,7 @@ export default function ReceiptModal({
         {/* Actions */}
         <div className="mt-5 flex gap-2.5">
           <button 
+            type="button"
             onClick={onClose} 
             className="flex-1 py-2.5 bg-[#2554FF] hover:bg-[#1B40DF] text-white border-2 border-[#12161A] shadow-[2.5px_2.5px_0px_#12161A] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none rounded-xl font-black text-xs transition cursor-pointer"
           >
@@ -85,6 +86,7 @@ export default function ReceiptModal({
           </button>
           {receiptModal.isHistory && (
             <button 
+              type="button"
               onClick={() => onUndoReceipt(receiptModal)} 
               className="py-2.5 px-4 bg-[#FFE4E6] hover:bg-[#FECDD3] text-[#E11D48] border-2 border-[#12161A] shadow-[2.5px_2.5px_0px_#12161A] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none rounded-xl font-black text-xs transition cursor-pointer"
             >

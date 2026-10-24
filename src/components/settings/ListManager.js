@@ -38,20 +38,26 @@ export default function ListManager({ title, data, updateDB, dataKey, icon: Icon
           type="text" 
           value={name} 
           onChange={(e) => setName(e.target.value)} 
+          aria-label={`ชื่อ${title}`}
           className={`${theme.input} text-xs py-2`} 
-          placeholder={`ชื่อ${title}...`} 
+          placeholder={`ชื่อ${title}…`} 
         />
         {hasEmail && (
           <input 
             type="email" 
             value={email} 
             onChange={(e) => setEmail(e.target.value)} 
+            aria-label="อีเมลสมาชิก"
+            spellCheck={false}
+            autoComplete="off"
             className={`${theme.input} text-xs py-2`} 
-            placeholder="อีเมล..." 
+            placeholder="อีเมล…" 
           />
         )}
         <button 
+          type="button"
           onClick={handleAdd} 
+          aria-label={`เพิ่ม${title}`}
           className="bg-[#2554FF] hover:bg-[#1B40DF] text-white border-2 border-[#12161A] shadow-[2px_2px_0px_#12161A] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none px-3 rounded-xl transition cursor-pointer flex items-center justify-center shrink-0"
         >
           <Plus size={18} className="stroke-[3]" />
@@ -69,11 +75,13 @@ export default function ListManager({ title, data, updateDB, dataKey, icon: Icon
               {item.email && <span className="block text-[10px] text-slate-500 font-medium">{item.email}</span>}
             </div>
             <button 
+              type="button"
               onClick={() => handleDelete(item.id)} 
-              className="w-6 h-6 rounded-md bg-white hover:bg-rose-50 border border-[#12161A] flex items-center justify-center text-[#E11D48] transition cursor-pointer"
+              aria-label={`ลบ ${item.name}`}
+              className="w-7 h-7 rounded-md bg-white hover:bg-rose-50 border border-[#12161A] flex items-center justify-center text-[#E11D48] transition cursor-pointer"
               title="ลบรายการ"
             >
-              <Trash2 size={12} />
+              <Trash2 size={13} />
             </button>
           </div>
         ))}

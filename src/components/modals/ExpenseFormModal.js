@@ -178,22 +178,28 @@ export default function ExpenseFormModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-[#12161A]/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
-      <div className="bg-white border-2 border-[#12161A] shadow-[8px_8px_0px_#12161A] w-full max-w-md rounded-2xl p-6 max-h-[90vh] overflow-y-auto custom-scrollbar">
+    <div className="fixed inset-0 bg-[#12161A]/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn modal-contain">
+      <div 
+        role="dialog" 
+        aria-modal="true" 
+        aria-labelledby="expense-form-title"
+        className="bg-white border-2 border-[#12161A] shadow-[8px_8px_0px_#12161A] w-full max-w-md rounded-2xl p-6 max-h-[90vh] overflow-y-auto custom-scrollbar"
+      >
         <div className="flex justify-between items-center mb-5 pb-3 border-b-2 border-slate-100">
           <div>
             <span className="text-[10px] font-black tracking-widest text-[#2554FF] uppercase bg-[#EEF2FF] border border-[#2554FF]/40 px-2 py-0.5 rounded-full">
               EXPENSE FORM
             </span>
-            <h2 className="text-xl font-black text-[#12161A] tracking-tight mt-1">
+            <h2 id="expense-form-title" className="text-xl font-black text-[#12161A] tracking-tight mt-1">
               {editingExpense ? 'แก้ไขรายการบิล' : 'สร้างรายการบิลใหม่'}
             </h2>
           </div>
           <button 
             onClick={close} 
-            className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 border border-[#12161A] flex items-center justify-center text-[#12161A] transition cursor-pointer"
+            aria-label="ปิดหน้าต่าง"
+            className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 border border-[#12161A] flex items-center justify-center text-[#12161A] transition cursor-pointer focus-visible:ring-2 focus-visible:ring-[#2554FF]"
           >
-            <X size={18} />
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
 

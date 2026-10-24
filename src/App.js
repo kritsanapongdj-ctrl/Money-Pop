@@ -63,10 +63,10 @@ export default function App() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#F5F6F0] p-4 font-sans">
         <div className="bg-white border-2 border-[#12161A] shadow-[5px_5px_0px_#12161A] rounded-2xl p-6 flex flex-col items-center max-w-xs text-center">
-          <div className="w-14 h-14 bg-[#2554FF] text-white rounded-2xl border-2 border-[#12161A] shadow-[3px_3px_0px_#12161A] flex items-center justify-center mb-3 animate-pulse">
+          <div className="w-14 h-14 bg-[#2554FF] text-white rounded-2xl border-2 border-[#12161A] shadow-[3px_3px_0px_#12161A] flex items-center justify-center mb-3 animate-pulse" aria-hidden="true">
             <span className="font-mono font-black text-2xl">฿</span>
           </div>
-          <p className="font-black text-lg text-[#12161A] tracking-tight">กำลังเปิดตู้เซฟข้อมูล...</p>
+          <p className="font-black text-lg text-[#12161A] tracking-tight">กำลังเปิดตู้เซฟข้อมูล…</p>
           <p className="text-xs text-slate-500 mt-1 font-semibold">Money-Pop Vault • Gen-Y Fintech</p>
         </div>
       </div>
@@ -89,10 +89,11 @@ export default function App() {
         <main className="flex-1 overflow-y-auto sm:p-5 pb-20 custom-scrollbar">
           {/* Sticky Bank Filter Dock */}
           {(tab === 'dashboard' || tab === 'expenses') && (
-            <div className="sticky top-0 bg-[#F5F6F0]/95 backdrop-blur-md z-10 px-4 py-2.5 border-b-2 border-[#12161A] mb-4 flex gap-2 items-center">
+            <div className="sticky top-0 bg-[#F5F6F0]/95 backdrop-blur-md z-10 px-4 py-2.5 border-b-2 border-[#12161A] mb-4 flex gap-2 items-center" role="search" aria-label="ตัวกรองข้อมูล">
               <div className="flex-1 min-w-0">
                 <input 
                   type="month" 
+                  aria-label="เลือกรอบเดือนที่ต้องการดู"
                   value={filters.month} 
                   onChange={(e) => setFilters({ ...filters, month: e.target.value })} 
                   className="w-full bg-white border-2 border-[#12161A] text-[#12161A] font-bold rounded-xl px-2.5 py-1.5 text-xs shadow-[2px_2px_0px_#12161A] focus:outline-none focus:ring-2 focus:ring-[#2554FF] transition-all" 
@@ -100,6 +101,7 @@ export default function App() {
               </div>
               <div className="flex-1 min-w-0">
                 <select 
+                  aria-label="กรองตามผู้ชำระ"
                   value={filters.payer} 
                   onChange={(e) => setFilters({ ...filters, payer: e.target.value })} 
                   className="w-full bg-white border-2 border-[#12161A] text-[#12161A] font-bold rounded-xl px-2 py-1.5 text-xs shadow-[2px_2px_0px_#12161A] focus:outline-none focus:ring-2 focus:ring-[#2554FF] transition-all truncate"
@@ -112,6 +114,7 @@ export default function App() {
               </div>
               <div className="flex-1 min-w-0">
                 <select 
+                  aria-label="กรองตามหมวดหมู่"
                   value={filters.category} 
                   onChange={(e) => setFilters({ ...filters, category: e.target.value })} 
                   className="w-full bg-white border-2 border-[#12161A] text-[#12161A] font-bold rounded-xl px-2 py-1.5 text-xs shadow-[2px_2px_0px_#12161A] focus:outline-none focus:ring-2 focus:ring-[#2554FF] transition-all truncate"

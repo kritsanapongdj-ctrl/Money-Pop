@@ -11,17 +11,17 @@ export default function UserSelectModal({
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 bg-[#12161A]/70 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fadeIn">
-      <div className="bg-white border-2 border-[#12161A] shadow-[8px_8px_0px_#12161A] w-full max-w-sm rounded-2xl p-6 text-center">
+    <div className="fixed inset-0 bg-[#12161A]/70 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fadeIn" role="dialog" aria-modal="true" aria-labelledby="user-select-title">
+      <div className="bg-white border-2 border-[#12161A] shadow-[8px_8px_0px_#12161A] w-full max-w-sm rounded-2xl p-6 text-center modal-contain overscroll-contain">
         
-        <div className="mx-auto w-14 h-14 bg-[#2554FF] text-white border-2 border-[#12161A] shadow-[3px_3px_0px_#12161A] rounded-2xl flex items-center justify-center mb-3">
+        <div className="mx-auto w-14 h-14 bg-[#2554FF] text-white border-2 border-[#12161A] shadow-[3px_3px_0px_#12161A] rounded-2xl flex items-center justify-center mb-3" aria-hidden="true">
           <Users size={28} />
         </div>
         
         <span className="text-[10px] font-black tracking-widest text-[#2554FF] uppercase bg-[#EEF2FF] border border-[#2554FF]/40 px-2 py-0.5 rounded-full">
           USER PROFILE
         </span>
-        <h2 className="text-xl font-black text-[#12161A] tracking-tight mt-1 mb-1">
+        <h2 id="user-select-title" className="text-xl font-black text-[#12161A] tracking-tight mt-1 mb-1">
           เลือกผู้ใช้งานปัจจุบัน
         </h2>
         <p className="text-slate-500 mb-5 text-xs font-semibold">
@@ -33,8 +33,10 @@ export default function UserSelectModal({
             const isSelected = currentUser === String(m.id);
             return (
               <button 
+                type="button"
                 key={m.id} 
                 onClick={() => onSelectUser(m.id)} 
+                aria-pressed={isSelected}
                 className={`w-full py-3 px-4 rounded-xl font-black transition-all text-sm flex items-center justify-between border-2 border-[#12161A] cursor-pointer ${
                   isSelected 
                     ? 'bg-[#2554FF] text-white shadow-[3px_3px_0px_#12161A] translate-x-[-1px] translate-y-[-1px]' 
@@ -42,10 +44,10 @@ export default function UserSelectModal({
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <div className={`w-3 h-3 rounded-full border border-[#12161A] ${isSelected ? 'bg-[#10B981]' : 'bg-slate-300'}`} />
+                  <div className={`w-3 h-3 rounded-full border border-[#12161A] ${isSelected ? 'bg-[#10B981]' : 'bg-slate-300'}`} aria-hidden="true" />
                   <span>{m.name}</span>
                 </div>
-                {isSelected && <Check size={18} className="stroke-[3]" />}
+                {isSelected && <Check size={18} className="stroke-[3]" aria-hidden="true" />}
               </button>
             );
           })}
@@ -53,6 +55,7 @@ export default function UserSelectModal({
 
         {currentUser && (
           <button 
+            type="button"
             onClick={onClose} 
             className="mt-5 text-slate-500 hover:text-[#12161A] font-bold text-xs underline cursor-pointer"
           >

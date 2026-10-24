@@ -32,6 +32,7 @@ export default function Settings({ dbData, updateDB, onExportData, onImportData,
           </p>
         </div>
         <button 
+          type="button"
           onClick={() => setGuideOpen(true)}
           className="bg-[#2554FF] hover:bg-[#1B40DF] text-white border-2 border-[#12161A] shadow-[2px_2px_0px_#12161A] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none px-3.5 py-2 rounded-xl text-xs font-black shrink-0 flex items-center gap-1.5 transition cursor-pointer"
         >
@@ -53,6 +54,7 @@ export default function Settings({ dbData, updateDB, onExportData, onImportData,
 
         <div className="grid grid-cols-2 gap-3">
           <button 
+            type="button"
             onClick={onExportData} 
             className="flex flex-col items-center justify-center bg-white hover:bg-slate-50 p-3 rounded-xl border-2 border-[#12161A] text-[#12161A] shadow-[2.5px_2.5px_0px_#12161A] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition cursor-pointer"
           >

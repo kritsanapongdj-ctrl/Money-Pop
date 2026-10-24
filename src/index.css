@@ -11,6 +11,12 @@
   box-sizing: border-box;
 }
 
+html {
+  /* Prevent 300ms double-tap delay on mobile */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   margin: 0;
   background-color: #F5F6F0;
@@ -18,6 +24,14 @@ body {
   font-family: 'Plus Jakarta Sans', 'IBM Plex Sans Thai', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Accessible focus ring defaults */
+button:focus-visible, 
+input:focus-visible, 
+select:focus-visible {
+  outline: 2px solid #2554FF;
+  outline-offset: 2px;
 }
 
 /* Custom Bank Slip / Brutal Accents */
@@ -38,6 +52,11 @@ body {
   box-shadow: 1px 1px 0px #12161A;
 }
 
+/* Modal containment */
+.modal-contain {
+  overscroll-behavior: contain;
+}
+
 /* Bank Voucher Perforation Effect */
 .receipt-sawtooth {
   background-image: radial-gradient(circle at 10px -5px, transparent 12px, #FFFFFF 13px);
@@ -55,4 +74,17 @@ body {
   background: #cbd5e1;
   border-radius: 4px;
 }
+
+/* Motion accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 

@@ -16,17 +16,17 @@ export default function SetupGuideModal({ show, onClose, currentUser, currentMem
   };
 
   return (
-    <div className="fixed inset-0 bg-[#12161A]/70 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-fadeIn">
-      <div className="bg-white border-2 border-[#12161A] shadow-[8px_8px_0px_#12161A] w-full max-w-lg rounded-2xl p-6 max-h-[90vh] overflow-y-auto custom-scrollbar">
+    <div className="fixed inset-0 bg-[#12161A]/70 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-fadeIn" role="dialog" aria-modal="true" aria-labelledby="setup-guide-title">
+      <div className="bg-white border-2 border-[#12161A] shadow-[8px_8px_0px_#12161A] w-full max-w-lg rounded-2xl p-6 max-h-[90vh] overflow-y-auto custom-scrollbar modal-contain overscroll-contain">
         
         {/* Header */}
         <div className="flex justify-between items-start mb-4 pb-3 border-b-2 border-slate-100">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#2554FF] text-white border-2 border-[#12161A] shadow-[1.5px_1.5px_0px_#12161A] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-[#2554FF] text-white border-2 border-[#12161A] shadow-[1.5px_1.5px_0px_#12161A] flex items-center justify-center" aria-hidden="true">
               <Smartphone size={18} />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-black text-[#12161A] tracking-tight">
+              <h2 id="setup-guide-title" className="text-base sm:text-lg font-black text-[#12161A] tracking-tight">
                 คู่มือเชื่อมต่อมือถือ Android
               </h2>
               <p className="text-[11px] text-slate-500 font-bold">
@@ -35,7 +35,9 @@ export default function SetupGuideModal({ show, onClose, currentUser, currentMem
             </div>
           </div>
           <button 
+            type="button"
             onClick={onClose} 
+            aria-label="ปิดคู่มือ"
             className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 border border-[#12161A] flex items-center justify-center text-[#12161A] transition cursor-pointer"
           >
             <X size={18} />
@@ -51,10 +53,12 @@ export default function SetupGuideModal({ show, onClose, currentUser, currentMem
             <input 
               type="text" 
               readOnly 
+              aria-label="Personal Webhook URL"
               value={syncUrl} 
               className="bg-white border border-[#12161A] text-slate-700 text-xs font-mono font-bold rounded-lg p-2 w-full select-all outline-none" 
             />
             <button 
+              type="button"
               onClick={handleCopy} 
               className="bg-[#2554FF] hover:bg-[#1B40DF] text-white border-2 border-[#12161A] shadow-[1.5px_1.5px_0px_#12161A] px-3 py-2 rounded-lg text-xs font-black shrink-0 flex items-center gap-1 active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition cursor-pointer"
             >

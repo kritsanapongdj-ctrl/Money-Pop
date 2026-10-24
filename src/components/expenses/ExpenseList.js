@@ -63,6 +63,7 @@ export default function ExpenseList({
         </div>
 
         <button 
+          type="button"
           onClick={onOpenCreateModal} 
           className="bg-[#2554FF] hover:bg-[#1B40DF] text-white font-black border-2 border-[#12161A] shadow-[2.5px_2.5px_0px_#12161A] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none px-3.5 py-1.5 rounded-xl flex items-center text-xs transition cursor-pointer"
         >
@@ -71,8 +72,11 @@ export default function ExpenseList({
       </div>
 
       {/* Bank Segmented Tab Toggle (UOB TMRW / K-Plus style) */}
-      <div className="flex bg-[#E5E7EB] border-2 border-[#12161A] rounded-xl p-1 mb-4 shadow-[2px_2px_0px_#12161A]">
+      <div className="flex bg-[#E5E7EB] border-2 border-[#12161A] rounded-xl p-1 mb-4 shadow-[2px_2px_0px_#12161A]" role="tablist" aria-label="สถานะบิลค่าใช้จ่าย">
         <button 
+          type="button"
+          role="tab"
+          aria-selected={expenseTab === 'pending'}
           onClick={() => setExpenseTab('pending')} 
           className={`flex-1 py-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             expenseTab === 'pending' 
@@ -84,6 +88,9 @@ export default function ExpenseList({
           รอชำระ (To Pay)
         </button>
         <button 
+          type="button"
+          role="tab"
+          aria-selected={expenseTab === 'paid'}
           onClick={() => setExpenseTab('paid')} 
           className={`flex-1 py-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             expenseTab === 'paid' 
@@ -98,10 +105,10 @@ export default function ExpenseList({
 
       {/* High-Contrast Bulk Payment Bar (K-Plus / SCB floating action bar) */}
       {selectedCount > 0 && expenseTab === 'pending' && (
-        <div className="sticky top-16 z-20 bg-[#FEF3C7] border-2 border-[#12161A] shadow-[4px_4px_0px_#12161A] p-3.5 rounded-2xl flex justify-between items-center mb-4 animate-bounce-short">
+        <div className="sticky top-16 z-20 bg-[#FEF3C7] border-2 border-[#12161A] shadow-[4px_4px_0px_#12161A] p-3.5 rounded-2xl flex justify-between items-center mb-4 animate-bounce-short" role="region" aria-live="polite" aria-label="แถบชำระเงินหลายรายการ">
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#D97706] border border-[#12161A]" />
+              <span className="w-2 h-2 rounded-full bg-[#D97706] border border-[#12161A]" aria-hidden="true" />
               <span className="text-[#92400E] text-[11px] font-black uppercase">
                 เลือกชำระ {selectedCount} บิล
               </span>
@@ -111,6 +118,7 @@ export default function ExpenseList({
             </p>
           </div>
           <button 
+            type="button"
             onClick={onBulkPay} 
             className="bg-[#059669] hover:bg-[#047857] text-white border-2 border-[#12161A] shadow-[2px_2px_0px_#12161A] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none px-4 py-2 rounded-xl text-xs font-black transition cursor-pointer"
           >

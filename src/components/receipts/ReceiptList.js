@@ -66,6 +66,7 @@ export default function ReceiptList({ receiptHistory, members, onViewReceipt }) 
                     รวม {r.items.length} รายการ
                   </span>
                   <button 
+                    type="button"
                     onClick={() => onViewReceipt(r)} 
                     className="bg-white hover:bg-slate-100 text-[#12161A] border-2 border-[#12161A] shadow-[2px_2px_0px_#12161A] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none px-3.5 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1 cursor-pointer"
                   >
