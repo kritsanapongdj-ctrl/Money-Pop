@@ -1,12 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { 
   CreditCard, Plus, HelpCircle, Users, AlertCircle, 
-  Calendar, CheckCircle2, Edit2, Trash2, ShieldCheck 
+  Calendar, CheckCircle2, Edit2, Trash2, ShieldCheck, Lock, KeyRound 
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/currency';
 import { calculateCreditUsage } from '../../utils/creditUtils';
 import CreditSourceModal from '../modals/CreditSourceModal';
 import SetupGuideModal from '../modals/SetupGuideModal';
+import VaultPinLock from './VaultPinLock';
 
 export default function PersonalCreditVault({
   currentUser,
@@ -20,8 +21,11 @@ export default function PersonalCreditVault({
   const [modalOpen, setModalOpen] = useState(false);
   const [editingSource, setEditingSource] = useState(null);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [unlockedUser, setUnlockedUser] = useState(null);
+  const [resettingPin, setResettingPin] = useState(false);
 
   const currentMember = members.find((m) => String(m.id) === String(currentUser));
+  const isUnlocked = unlockedUser === String(currentUser) && !resettingPin;
 
   // Filter sources owned by current member
   const myCreditSources = useMemo(() => {
@@ -72,6 +76,42 @@ export default function PersonalCreditVault({
     showToast(`ลบ "${sourceToDelete.name}" เรียบร้อยแล้ว`);
   };
 
+  if (!currentUser) {
+    return (
+      <div className="bg-white border-2 border-[#12161A] shadow-[4px_4px_0px_#12161A] rounded-2xl p-8 text-center max-w-sm mx-auto my-6">
+        <div className="w-12 h-12 bg-[#EEF2FF] rounded-2xl border-2 border-[#12161A] flex items-center justify-center mx-auto mb-3 text-[#2554FF]">
+          <Users size={24} />
+        </div>
+        <h3 className="font-black text-base text-[#12161A]">กรุณาระบุผู้ใช้งานก่อน</h3>
+        <p className="text-xs text-slate-500 mt-1 mb-4 font-medium">เพื่อเปิดตู้เซฟสินเชื่อและบัตรส่วนตัวของคุณ</p>
+        <button 
+          type="button"
+          onClick={onOpenUserModal}
+          className="bg-[#2554FF] text-white px-4 py-2 rounded-xl font-black text-xs border-2 border-[#12161A] shadow-[2px_2px_0px_#12161A] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition cursor-pointer"
+        >
+          เลือกผู้ใช้งาน
+        </button>
+      </div>
+    );
+  }
+
+  // If locked, render Secure PIN Keypad only (No credit data rendered in DOM)
+  if (!isUnlocked) {
+    return (
+      <VaultPinLock
+        member={currentMember}
+        members={members}
+        onUnlock={() => {
+          setUnlockedUser(String(currentUser));
+          setResettingPin(false);
+        }}
+        updateDB={updateDB}
+        showToast={showToast}
+        onOpenUserModal={onOpenUserModal}
+      />
+    );
+  }
+
   return (
     <div className="px-4 sm:px-0 space-y-4">
       {/* Header Profile Strip */}
@@ -83,7 +123,7 @@ export default function PersonalCreditVault({
           <div>
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] font-black tracking-widest text-[#2554FF] uppercase bg-[#EEF2FF] border border-[#2554FF]/30 px-2 py-0.2 rounded-full">
-                MY CREDIT VAULT
+                MY CREDIT VAULT 🔒
               </span>
             </div>
             <h2 className="text-base sm:text-lg font-black text-[#12161A] tracking-tight">
@@ -92,23 +132,41 @@ export default function PersonalCreditVault({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <button 
+            type="button"
+            onClick={() => setUnlockedUser(null)}
+            className="bg-[#F5F6F0] hover:bg-slate-200 text-slate-700 border border-[#12161A] shadow-[1.5px_1.5px_0px_#12161A] px-2.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1 active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition cursor-pointer"
+            title="ล็อคตู้เซฟทันที"
+          >
+            <Lock size={12} className="text-[#E11D48]" /> ล็อค
+          </button>
+
+          <button 
+            type="button"
+            onClick={() => setResettingPin(true)}
+            className="bg-white hover:bg-slate-100 text-slate-700 border border-[#12161A] shadow-[1.5px_1.5px_0px_#12161A] px-2.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1 active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition cursor-pointer"
+            title="เปลี่ยนรหัส PIN"
+          >
+            <KeyRound size={12} className="text-[#2554FF]" /> รหัส PIN
+          </button>
+
           <button 
             type="button"
             onClick={() => setGuideOpen(true)}
-            className="flex-1 sm:flex-none bg-white hover:bg-slate-100 text-[#12161A] border-2 border-[#12161A] shadow-[2px_2px_0px_#12161A] px-3 py-1.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1 active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition cursor-pointer"
+            className="bg-white hover:bg-slate-100 text-[#12161A] border border-[#12161A] shadow-[1.5px_1.5px_0px_#12161A] px-2.5 py-1.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1 active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition cursor-pointer"
           >
-            <HelpCircle size={14} className="text-[#2554FF]" />
-            คู่มือเชื่อมต่อมือถือ
+            <HelpCircle size={13} className="text-[#2554FF]" />
+            คู่มือ
           </button>
 
           <button 
             type="button"
             onClick={() => { setEditingSource(null); setModalOpen(true); }}
-            className="flex-1 sm:flex-none bg-[#2554FF] hover:bg-[#1B40DF] text-white border-2 border-[#12161A] shadow-[2px_2px_0px_#12161A] px-3.5 py-1.5 rounded-xl font-black text-xs flex items-center justify-center gap-1 active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition cursor-pointer"
+            className="bg-[#2554FF] hover:bg-[#1B40DF] text-white border border-[#12161A] shadow-[1.5px_1.5px_0px_#12161A] px-3 py-1.5 rounded-xl font-black text-xs flex items-center justify-center gap-1 active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition cursor-pointer"
           >
-            <Plus size={15} className="stroke-[3]" />
-            เพิ่มสินเชื่อ/บัตร
+            <Plus size={14} className="stroke-[3]" />
+            เพิ่มบัตร
           </button>
         </div>
       </div>
