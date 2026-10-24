@@ -156,10 +156,10 @@ export default function SetupGuideModal({ show, onClose, currentUser, currentMem
                   <span className="font-black text-[#E11D48] text-xs block mb-1">
                     🔴 ฝั่ง Triggers (ตัวกระตุ้นสีแดง):
                   </span>
-                  <ol className="list-decimal pl-4 space-y-1 text-slate-700">
-                    <li>กดเครื่องหมาย <b>+</b> สีแดง ➔ เลือกหมวด <b>"แอปพลิเคชัน (Applications)"</b></li>
-                    <li>เลือก <b>"ได้รับการแจ้งเตือน (Notification Received)"</b> ➔ เลือก <b>"เลือกแอปพลิเคชัน"</b></li>
-                    <li>ติ๊กเลือกแอป: <b>LINE</b> (สำหรับ LINE BK), <b>Shopee</b>, <b>K PLUS</b>, <b>UOB</b>, <b>KTC</b></li>
+                  <ol className="list-decimal pl-4 space-y-1.5 text-slate-700">
+                    <li>กดเครื่องหมาย <b>+</b> สีแดง ➔ เลือกหมวด <b>"📱 เหตุการณ์ของอุปกรณ์ (Device Events)"</b> <i>(อยู่เหนือหมวดแอปพลิเคชัน)</i> หรือแตะที่ <b>รูปแว่นขยาย 🔍</b> ด้านบนแล้วค้นหาคำว่า <code>แจ้งเตือน</code></li>
+                    <li>แตะเลือก <b>"การแจ้งเตือน (Notification)"</b> ➔ เลือก <b>"ได้รับการแจ้งเตือน (Notification Received)"</b></li>
+                    <li>เลือก <b>"เลือกแอปพลิเคชัน"</b> ➔ ติ๊กเลือกแอป: <b>LINE</b> (สำหรับ LINE BK), <b>Shopee</b>, <b>K PLUS</b>, <b>UOB</b>, <b>KTC</b></li>
                     <li>
                       <b>ตัวกรองความปลอดภัย (ไม่ให้ดักแชทส่วนตัว):</b><br />
                       ในช่อง <b>หัวข้อ (Notification Title)</b> ให้พิมพ์: <code>*LINE BK*</code><br />
