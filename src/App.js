@@ -89,14 +89,14 @@ export default function App() {
         <main className="flex-1 overflow-y-auto sm:p-5 pb-20 custom-scrollbar">
           {/* Sticky Bank Filter Dock */}
           {(tab === 'dashboard' || tab === 'expenses') && (
-            <div className="sticky top-0 bg-[#F5F6F0]/95 backdrop-blur-md z-10 px-4 py-2.5 border-b-2 border-[#12161A] mb-4 flex gap-2 items-center" role="search" aria-label="ตัวกรองข้อมูล">
-              <div className="flex-1 min-w-0">
+            <div className="sticky top-0 bg-[#F5F6F0]/95 backdrop-blur-md z-10 px-4 py-2.5 border-b-2 border-[#12161A] mb-4 flex gap-1.5 sm:gap-2 items-center" role="search" aria-label="ตัวกรองข้อมูล">
+              <div className="flex-[1.25] min-w-0">
                 <input 
                   type="month" 
                   aria-label="เลือกรอบเดือนที่ต้องการดู"
                   value={filters.month} 
                   onChange={(e) => setFilters({ ...filters, month: e.target.value })} 
-                  className="w-full bg-white border-2 border-[#12161A] text-[#12161A] font-bold rounded-xl px-2.5 py-1.5 text-xs shadow-[2px_2px_0px_#12161A] focus:outline-none focus:ring-2 focus:ring-[#2554FF] transition-all" 
+                  className="w-full bg-white border-2 border-[#12161A] text-[#12161A] font-bold rounded-xl px-2 py-1.5 text-xs shadow-[2px_2px_0px_#12161A] focus:outline-none focus:ring-2 focus:ring-[#2554FF] transition-all" 
                 />
               </div>
               <div className="flex-1 min-w-0">
@@ -104,7 +104,7 @@ export default function App() {
                   aria-label="กรองตามผู้ชำระ"
                   value={filters.payer} 
                   onChange={(e) => setFilters({ ...filters, payer: e.target.value })} 
-                  className="w-full bg-white border-2 border-[#12161A] text-[#12161A] font-bold rounded-xl px-2 py-1.5 text-xs shadow-[2px_2px_0px_#12161A] focus:outline-none focus:ring-2 focus:ring-[#2554FF] transition-all truncate"
+                  className="w-full bg-white border-2 border-[#12161A] text-[#12161A] font-bold rounded-xl px-1.5 py-1.5 text-xs shadow-[2px_2px_0px_#12161A] focus:outline-none focus:ring-2 focus:ring-[#2554FF] transition-all truncate"
                 >
                   <option value="">👤 ทุกคน</option>
                   {dbData.members.map((m) => (
@@ -117,7 +117,7 @@ export default function App() {
                   aria-label="กรองตามหมวดหมู่"
                   value={filters.category} 
                   onChange={(e) => setFilters({ ...filters, category: e.target.value })} 
-                  className="w-full bg-white border-2 border-[#12161A] text-[#12161A] font-bold rounded-xl px-2 py-1.5 text-xs shadow-[2px_2px_0px_#12161A] focus:outline-none focus:ring-2 focus:ring-[#2554FF] transition-all truncate"
+                  className="w-full bg-white border-2 border-[#12161A] text-[#12161A] font-bold rounded-xl px-1.5 py-1.5 text-xs shadow-[2px_2px_0px_#12161A] focus:outline-none focus:ring-2 focus:ring-[#2554FF] transition-all truncate"
                 >
                   <option value="">📁 ทุกหมวด</option>
                   {dbData.categories.map((c) => (
