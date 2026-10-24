@@ -29,7 +29,7 @@ export default function CreditSourceModal({
         ownerId: editingSource.ownerId || currentUser,
         totalLimit: editingSource.totalLimit || '',
         availableLimit: editingSource.availableLimit || '',
-        currentMonthDue: editingSource.currentMonthDue || '',
+        currentMonthDue: editingSource.currentMonthDue || editingSource.statementDue || '',
         dueDate: editingSource.dueDate || '',
         billingCycleDay: editingSource.billingCycleDay || '',
         pdfPassword: editingSource.pdfPassword || ''

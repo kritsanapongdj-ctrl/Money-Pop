@@ -119,10 +119,19 @@ function loadDatabase() {
     Logger.log('Spreadsheet load notice: ' + err);
   }
 
-  // Save back to ScriptProperties
-  if ((db.members && db.members.length > 0) || (db.expenses && db.expenses.length > 0)) {
-    SCRIPT_PROP.setProperty(DB_PROP_KEY, JSON.stringify(db));
-  }
+  // Save light metadata back to ScriptProperties safely (avoid 9KB property overflow)
+  try {
+    const meta = {
+      members: db.members || [],
+      categories: db.categories || [],
+      sources: db.sources || [],
+      savings: db.savings || { currentAmount: 0, transactions: [] }
+    };
+    const metaStr = JSON.stringify(meta);
+    if (metaStr.length < 8500) {
+      SCRIPT_PROP.setProperty(DB_PROP_KEY, metaStr);
+    }
+  } catch (e) {}
 
   return db;
 }
@@ -443,12 +452,14 @@ function updateMemberCreditSource(db, memberId, sourceName, sourceType, metrics)
       totalLimit: metrics.totalLimit || 0,
       availableLimit: metrics.availableLimit || 0,
       statementDue: metrics.amount,
+      currentMonthDue: metrics.amount,
       dueDate: metrics.dueDate,
       updatedAt: Date.now()
     };
     db.sources.push(src);
   } else {
     src.statementDue = metrics.amount;
+    src.currentMonthDue = metrics.amount;
     if (metrics.totalLimit > 0) src.totalLimit = metrics.totalLimit;
     if (metrics.availableLimit > 0) src.availableLimit = metrics.availableLimit;
     if (metrics.dueDate) src.dueDate = metrics.dueDate;
@@ -494,21 +505,43 @@ function createExpenseBill(db, memberId, sourceName, metrics) {
  */
 function handleMacroDroidWebhook(params) {
   const db = loadDatabase();
-  const memberId = params.memberId || params.payerId;
-  const sourceName = params.source || params.bank || 'แจ้งเตือนอัตโนมัติ';
-  const amount = parseFloat(params.amount) || 0;
+  const memberId = params.memberId || params.payerId || '1776934121366';
+  let sourceName = params.source || params.bank || '';
+  let rawAmount = params.amount !== undefined ? String(params.amount) : '';
+  let amount = 0;
 
-  if (memberId && amount > 0) {
-    updateMemberCreditSource(db, memberId, sourceName, 'credit_line', {
-      amount: amount,
-      dueDate: '',
-      month: Utilities.formatDate(new Date(), 'GMT+7', 'yyyy-MM')
-    });
-    saveDatabase(db);
-    return createJsonResponse({ success: true, updated: sourceName, amount: amount });
+  // 1. Clean source title if empty or MacroDroid token
+  if (!sourceName || sourceName === '[not_title]' || sourceName.trim() === '') {
+    sourceName = 'แจ้งเตือนทดสอบ MacroDroid';
   }
 
-  return createJsonResponse({ success: false, message: 'Invalid payload' });
+  // 2. Extract amount from Thai bank notification or handle manual test action
+  if (!rawAmount || rawAmount === '[not_text]' || rawAmount.trim() === '') {
+    amount = 100; // ค่าทดสอบระบบเริ่มต้น เมื่อผู้ใช้กด "ทดสอบการกระทำ" ใน MacroDroid
+  } else {
+    // Regex extract number from Thai text (e.g., "ชำระ 1,450.00 บาท", "THB 250", "100")
+    const match = rawAmount.match(/([0-9]{1,3}(?:,[0-9]{3})*(\.[0-9]{1,2})?|[0-9]+(\.[0-9]{1,2})?)/);
+    if (match) {
+      amount = parseFloat(match[0].replace(/,/g, ''));
+    }
+  }
+
+  if (amount <= 0) amount = 100;
+
+  updateMemberCreditSource(db, memberId, sourceName, 'credit_line', {
+    amount: amount,
+    dueDate: '',
+    month: Utilities.formatDate(new Date(), 'GMT+7', 'yyyy-MM')
+  });
+
+  saveDatabase(db);
+  return createJsonResponse({ 
+    success: true, 
+    updated: sourceName, 
+    amount: amount,
+    memberId: memberId,
+    mode: (rawAmount === '[not_text]' || !rawAmount) ? 'test_mode' : 'live_mode'
+  });
 }
 
 /**

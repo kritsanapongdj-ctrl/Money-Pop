@@ -30,7 +30,11 @@ export function calculateCreditUsage(source, expenses = [], memberId, members = 
   const mid = String(memberId);
   const totalLimit = parseFloat(source.totalLimit) || 0;
   const availableLimit = parseFloat(source.availableLimit) || 0;
-  const statementDue = parseFloat(source.currentMonthDue) || 0;
+  const statementDue = parseFloat(
+    source.currentMonthDue !== undefined && source.currentMonthDue !== ''
+      ? source.currentMonthDue
+      : (source.statementDue || source.amount || 0)
+  ) || 0;
 
   let borrowedTotal = 0;
   const familyBorrowers = [];
